@@ -59,8 +59,8 @@ function clearSession() {
 function tryReconnect() {
   const name = sessionStorage.getItem('uno_name');
   const code = sessionStorage.getItem('uno_code');
-  const pid  = sessionStorage.getItem('uno_pid');
-  if (name && code && !myPlayerId) {
+  const pid  = sessionStorage.getItem('uno_pid') || myPlayerId;
+  if (name && code) {
     myPlayerName = name;
     myRoomCode   = code;
     wsSend({ type: 'join_room', playerName: name, roomCode: code, playerId: pid });
@@ -201,8 +201,11 @@ function handleServerMessage(msg) {
 
     case 'error': {
       showToast(msg.message, true);
-      if (!myPlayerId) {
+      const fatal = /not found|already in progress|full|name is already taken/i.test(msg.message || '');
+      if (!myPlayerId || (reconnecting && fatal)) {
         clearSession();
+        myPlayerId = myRoomCode = myPlayerName = null;
+        isHost = false;
         hideReconnectBanner();
         reconnecting = false;
         showScreen('lobby-screen');

@@ -57,6 +57,8 @@ function joinRoom(rooms, code, playerName, ws, reconnectId = null) {
   const room = rooms.get(code);
   if (!room) throw new Error('Room not found');
 
+  const nameKey = playerName.trim().toLowerCase();
+
   if (reconnectId) {
     const byId = room.players.get(reconnectId);
     if (byId && !byId.isConnected) {
@@ -68,7 +70,7 @@ function joinRoom(rooms, code, playerName, ws, reconnectId = null) {
     }
   }
 
-  const byName = [...room.players.values()].find(p => p.name === playerName && !p.isConnected && !p.isBot);
+  const byName = [...room.players.values()].find(p => p.name.toLowerCase() === nameKey && !p.isConnected && !p.isBot);
   if (byName) {
     byName.ws = ws;
     byName.isConnected = true;
@@ -79,7 +81,7 @@ function joinRoom(rooms, code, playerName, ws, reconnectId = null) {
 
   if (room.phase !== 'waiting') throw new Error('Game already in progress');
   if (room.players.size >= 8) throw new Error('Room is full (max 8 players)');
-  if ([...room.players.values()].some(p => p.isConnected && p.name === playerName)) {
+  if ([...room.players.values()].some(p => p.name.toLowerCase() === nameKey)) {
     throw new Error('That name is already taken in this room');
   }
 
@@ -103,8 +105,8 @@ function joinRoom(rooms, code, playerName, ws, reconnectId = null) {
 
 function addBot(room) {
   if (room.players.size >= 8) throw new Error('Room is full (max 8 players)');
-  const usedNames = new Set([...room.players.values()].map(p => p.name));
-  const available = BOT_NAMES.filter(n => !usedNames.has(n));
+  const usedNames = new Set([...room.players.values()].map(p => p.name.toLowerCase()));
+  const available = BOT_NAMES.filter(n => !usedNames.has(n.toLowerCase()));
   const botName = available.length > 0
     ? available[Math.floor(Math.random() * available.length)]
     : `Bot ${[...room.players.values()].filter(p => p.isBot).length + 1}`;

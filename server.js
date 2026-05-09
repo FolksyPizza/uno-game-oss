@@ -95,12 +95,17 @@ function handleGameOver(room) {
 }
 
 function handleDisconnect(ws) {
+  if (ws._disconnectHandled) return;
+  ws._disconnectHandled = true;
+
   const code = ws.roomCode;
   if (!code) return;
   const room = rooms.get(code);
   if (!room) return;
   const player = room.players.get(ws.playerId);
   if (!player) return;
+  // If the player has already been replaced by a new ws (reconnect), ignore.
+  if (player.ws && player.ws !== ws) return;
 
   player.isConnected = false;
   player.ws = null;
@@ -259,6 +264,9 @@ function executeBotTurn(room, botId) {
 wss.on('connection', (ws) => {
   ws.playerId = null;
   ws.roomCode = null;
+  ws.isAlive = true;
+
+  ws.on('pong', () => { ws.isAlive = true; });
 
   ws.on('message', (data) => {
     let msg;
@@ -268,6 +276,19 @@ wss.on('connection', (ws) => {
   ws.on('close', () => handleDisconnect(ws));
   ws.on('error', () => handleDisconnect(ws));
 });
+
+// Heartbeat: detect dead connections within ~60s instead of waiting for TCP timeout.
+const heartbeat = setInterval(() => {
+  for (const ws of wss.clients) {
+    if (ws.isAlive === false) {
+      try { ws.terminate(); } catch {}
+      continue;
+    }
+    ws.isAlive = false;
+    try { ws.ping(); } catch {}
+  }
+}, 30000);
+wss.on('close', () => clearInterval(heartbeat));
 
 function handleMessage(ws, msg) {
   const { type } = msg;
