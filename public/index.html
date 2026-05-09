@@ -14,6 +14,20 @@
     <div class="uno-logo">UNO</div>
     <p class="lobby-subtitle">Multiplayer Card Game</p>
 
+    <div id="auth-section" class="auth-section" style="display:none">
+      <div id="auth-anonymous" class="auth-anonymous">
+        <p class="auth-tip">Sign in to reserve your name and track your wins.</p>
+        <div class="auth-buttons">
+          <a id="auth-google-btn" href="/auth/google" class="btn btn-ghost auth-btn" style="display:none">Continue with Google</a>
+          <a id="auth-github-btn" href="/auth/github" class="btn btn-ghost auth-btn" style="display:none">Continue with GitHub</a>
+        </div>
+      </div>
+      <div id="auth-loggedin" class="auth-loggedin" style="display:none">
+        <span>Signed in as <strong id="auth-name"></strong> · <span id="auth-stats" class="auth-stats"></span></span>
+        <button id="auth-logout-btn" class="btn btn-sm btn-ghost">Sign out</button>
+      </div>
+    </div>
+
     <div class="lobby-section">
       <h3>Create a Room</h3>
       <input id="create-name" class="text-input" placeholder="Your name" maxlength="20" autocomplete="off">
@@ -58,6 +72,7 @@
         <div class="room-code-display">
           <span id="room-code-text">----</span>
           <button id="copy-code-btn" class="btn btn-sm btn-ghost" title="Copy code">⎘ Copy</button>
+          <button id="share-link-btn" class="btn btn-sm btn-ghost share-link-btn" title="Copy a join link">🔗 Share link</button>
         </div>
       </div>
 
@@ -146,6 +161,7 @@
     <div id="turn-banner" class="turn-banner">Waiting…</div>
     <div class="header-actions">
       <div id="active-rules-badges" class="header-rule-badges"></div>
+      <button id="mute-btn" class="mute-btn" aria-label="Toggle sound" title="Toggle sound">🔊</button>
       <button id="end-game-btn" class="btn btn-sm btn-red" style="display:none">⏹ End Game</button>
       <button id="game-rules-btn" class="btn btn-sm btn-ghost">📖 Rules</button>
     </div>
@@ -186,10 +202,10 @@
       <button class="log-tab" data-tab="chat" id="tab-chat">Chat <span id="chat-unread" class="chat-unread" style="display:none">0</span></button>
     </div>
     <div id="activity-content" class="tab-content">
-      <div id="activity-log" class="activity-log"></div>
+      <div id="activity-log" class="activity-log" role="log" aria-live="polite" aria-atomic="false"></div>
     </div>
     <div id="chat-content" class="tab-content" style="display:none">
-      <div id="game-chat-log" class="chat-log game-chat-log"></div>
+      <div id="game-chat-log" class="chat-log game-chat-log" role="log" aria-live="polite" aria-atomic="false"></div>
       <div class="chat-input-row">
         <input id="game-chat-input" class="chat-input" placeholder="Chat…" maxlength="200" autocomplete="off">
         <button id="game-chat-send" class="btn btn-sm btn-ghost">Send</button>
@@ -198,7 +214,10 @@
   </div>
 
   <div class="hand-section">
-    <div class="hand-label">Your Hand <span id="hand-count" class="hand-count"></span></div>
+    <div class="hand-label">
+      Your Hand <span id="hand-count" class="hand-count"></span>
+      <button id="sort-btn" class="sort-btn" title="Sort hand by color and number">⇅ Sort</button>
+    </div>
     <div id="hand-area" class="hand-area"></div>
   </div>
 

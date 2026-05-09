@@ -35,6 +35,7 @@ function createRoom(rooms, playerName, ws, isPublic = false) {
     isHost: true,
     isBot: false,
     saidUno: false,
+    userId: ws?.userId || null,
   };
   const room = {
     code,
@@ -95,6 +96,7 @@ function joinRoom(rooms, code, playerName, ws, reconnectId = null) {
     isHost: false,
     isBot: false,
     saidUno: false,
+    userId: ws?.userId || null,
   };
   room.players.set(playerId, player);
   room.playerOrder.push(playerId);

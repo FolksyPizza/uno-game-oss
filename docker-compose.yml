@@ -4,13 +4,41 @@ services:
     restart: unless-stopped
     networks:
       - proxy
+      - db
     environment:
       - PORT=5050
+      - DATABASE_URL=postgres://uno:uno@db:5432/uno
+      - SESSION_SECRET=${SESSION_SECRET:-change-me-in-production}
+      - PUBLIC_URL=${PUBLIC_URL:-http://localhost:5050}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:5050"]
       interval: 30s
       timeout: 5s
       retries: 3
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=uno
+      - POSTGRES_PASSWORD=uno
+      - POSTGRES_DB=uno
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uno -d uno"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   npm:
     image: jc21/nginx-proxy-manager:latest
@@ -29,7 +57,9 @@ services:
 
 networks:
   proxy:
+  db:
 
 volumes:
   npm-data:
   npm-letsencrypt:
+  db-data:

@@ -1093,3 +1093,89 @@ body {
   flex-shrink: 0;
 }
 .kick-btn:hover { background: rgba(231,76,60,0.2); color: #e74c3c; }
+
+/* ── Auth section (lobby) ─────────────────────────────────── */
+.auth-section {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  background: var(--glass-b);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: var(--radius);
+}
+.auth-tip { font-size: 13px; color: var(--muted); margin-bottom: 10px; text-align: center; }
+.auth-buttons { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.auth-btn { font-size: 14px; padding: 8px 16px; }
+.auth-loggedin { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 14px; }
+.auth-loggedin strong { color: var(--gold); }
+.auth-stats { color: var(--muted); font-size: 12px; }
+
+/* ── Accessibility: focus rings + reduced motion ──────────── */
+.btn:focus-visible,
+.text-input:focus-visible,
+.card:focus-visible,
+.public-toggle-label input:focus-visible,
+.hr-toggle:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Share link / mute / sort toggle buttons ──────────────── */
+.share-link-btn { margin-left: 6px; }
+.mute-btn, .sort-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.18);
+  color: var(--text);
+  font-size: 14px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.mute-btn:hover, .sort-btn:hover { background: rgba(255,255,255,0.10); }
+
+/* ── UNO button pulse when at 1 card ───────────────────────── */
+@keyframes uno-pulse {
+  0%, 100% { box-shadow: 0 4px 14px rgba(231,76,60,0.55); transform: scale(1); }
+  50%      { box-shadow: 0 6px 22px rgba(231,76,60,0.95); transform: scale(1.06); }
+}
+.btn-uno.uno-ready { animation: uno-pulse 1.1s ease-in-out infinite; }
+
+/* ── Disconnect badge ─────────────────────────────────────── */
+.dc-badge-pill {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background: rgba(231,76,60,0.85);
+  color: white;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+/* ── Mobile (≤720px) ──────────────────────────────────────── */
+@media (max-width: 720px) {
+  .lobby-card { padding: 18px 16px; margin: 16px 12px; max-width: none; }
+  .uno-logo { font-size: 56px; }
+  .modal-box { width: calc(100vw - 28px); max-width: none; padding: 18px; }
+  .opponents-panel { flex-wrap: wrap; gap: 8px; padding: 8px; }
+  .opponent { min-width: 0; flex: 1 1 calc(50% - 8px); padding: 8px; font-size: 12px; }
+  .play-area { flex-direction: column; gap: 14px; padding: 12px; }
+  .pile-group, .discard-area, .play-controls { width: 100%; justify-content: center; }
+  .hand-area .card { width: 56px; height: 84px; font-size: 14px; margin-left: -22px; }
+  .hand-area .card:first-child { margin-left: 0; }
+  .game-header { flex-wrap: wrap; gap: 6px; padding: 8px 10px; }
+  .header-actions { flex-wrap: wrap; }
+  .log-chat-panel { width: calc(100vw - 16px); max-width: none; }
+  .auth-buttons { flex-direction: column; }
+  .auth-btn { width: 100%; }
+}

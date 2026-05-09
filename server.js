@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { WebSocketServer } = require('ws');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 const { createRoom, joinRoom, addBot, removeBot } = require('./game/room');
 const {
   initGame, playCard, drawCard, passTurn, chooseColor, autoChooseColor,
@@ -9,12 +10,30 @@ const {
 } = require('./game/gameState');
 const { filterMessage, containsBadWord } = require('./game/profanity');
 const { getBotAction, getBotColorChoice, getBotSwapTarget } = require('./game/bot');
+const oauth = require('./auth/oauth');
+const userStore = require('./db/users');
+const chatStore = require('./db/chat');
+const resultsStore = require('./db/results');
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
 const rooms = new Map();
+
+app.use(express.json());
+oauth.register(app, cookieParser);
+
+app.get('/api/stats/:userId', async (req, res) => {
+  try {
+    const user = await userStore.findById(req.params.userId);
+    if (!user) return res.status(404).json({ error: 'not found' });
+    const stats = await userStore.getStats(user.id);
+    res.json({ displayName: user.display_name, ...stats });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -62,6 +81,18 @@ function handleGameOver(room) {
   room.phase = 'over';
   console.log(`[WIN]  ${winner.name} wins in ${room.code}!`);
   broadcast(room, { type: 'game_over', winnerId: winner.id, winnerName: winner.name });
+
+  if (db.isReady() && room.gameStartedAt) {
+    const players = [...room.players.values()].map(p => ({
+      userId: p.userId || null, displayName: p.name, isBot: p.isBot,
+    }));
+    resultsStore.record({
+      roomCode: room.code,
+      winnerUserId: winner.userId || null,
+      players,
+      startedAt: new Date(room.gameStartedAt).toISOString(),
+    }).catch(e => console.error('[DB] result record failed:', e.message));
+  }
 
   setTimeout(() => {
     if (!rooms.has(room.code)) return;
@@ -151,7 +182,12 @@ function handleDisconnect(ws) {
         // Auto-pick swap target
         const target = [...room.players.values()].find(p => p.id !== ws.playerId && p.isConnected);
         if (target) {
-          try { executeSevenSwap(room, ws.playerId, target.id); } catch {}
+          try { executeSevenSwap(room, ws.playerId, target.id); }
+          catch (e) { console.error('[SWAP ERR]', e.message); advanceTurn(room, 1); gs.pendingSevenSwap = false; gs.pendingSevenSwapPlayerId = null; }
+        } else {
+          gs.pendingSevenSwap = false;
+          gs.pendingSevenSwapPlayerId = null;
+          advanceTurn(room, 1);
         }
       } else {
         advanceTurn(room, 1);
@@ -176,7 +212,8 @@ function checkAndTriggerBot(room) {
         if (!rooms.has(room.code) || room.phase !== 'playing' || !room.gameState) return;
         if (!room.gameState.pendingColorChoice) return;
         const color = getBotColorChoice(room, chooser.id);
-        try { chooseColor(room, chooser.id, color); } catch {}
+        try { chooseColor(room, chooser.id, color); }
+        catch (e) { console.error('[BOT COLOR ERR]', e.message); return; }
         console.log(`[BOT]  ${chooser.name} chose ${color} in ${room.code}`);
         broadcastGameState(room);
         checkAndTriggerBot(room);
@@ -191,10 +228,20 @@ function checkAndTriggerBot(room) {
       setTimeout(() => {
         if (!rooms.has(room.code) || room.phase !== 'playing' || !room.gameState) return;
         if (!room.gameState.pendingSevenSwap) return;
-        const targetId = getBotSwapTarget(room, swapper.id);
-        if (targetId) {
-          try { executeSevenSwap(room, swapper.id, targetId); } catch {}
-          console.log(`[BOT]  ${swapper.name} swapped with ${room.players.get(targetId).name}`);
+        let targetId = getBotSwapTarget(room, swapper.id);
+        let target = targetId ? room.players.get(targetId) : null;
+        // Re-validate: target may have disconnected since bot picked
+        if (!target || !target.isConnected) {
+          target = [...room.players.values()].find(p => p.id !== swapper.id && p.isConnected);
+          targetId = target ? target.id : null;
+        }
+        if (target) {
+          try { executeSevenSwap(room, swapper.id, targetId); console.log(`[BOT]  ${swapper.name} swapped with ${target.name}`); }
+          catch (e) { console.error('[BOT SWAP ERR]', e.message); room.gameState.pendingSevenSwap = false; room.gameState.pendingSevenSwapPlayerId = null; advanceTurn(room, 1); }
+        } else {
+          room.gameState.pendingSevenSwap = false;
+          room.gameState.pendingSevenSwapPlayerId = null;
+          advanceTurn(room, 1);
         }
         broadcastGameState(room);
         checkAndTriggerBot(room);
@@ -249,7 +296,7 @@ function executeBotTurn(room, botId) {
   } catch (e) {
     console.error(`[BOT ERR] ${bot.name}: ${e.message}`);
     // Safety: advance turn if bot is stuck
-    try { advanceTurn(room, 1); } catch {}
+    try { advanceTurn(room, 1); } catch (advErr) { console.error('[BOT ADVANCE ERR]', advErr.message); }
   }
 
   // Say UNO after playing if 1 card left
@@ -261,10 +308,21 @@ function executeBotTurn(room, botId) {
 
 // ── WebSocket ────────────────────────────────────────────────────────────────
 
-wss.on('connection', (ws) => {
+wss.on('connection', async (ws, req) => {
   ws.playerId = null;
   ws.roomCode = null;
   ws.isAlive = true;
+  ws.userId = null;
+  ws.user = null;
+
+  // Resolve account from session cookie if present
+  try {
+    const sid = oauth.readSidFromCookieHeader(req.headers.cookie);
+    if (sid) {
+      const u = await userStore.findUserBySession(sid).catch(() => null);
+      if (u) { ws.userId = u.id; ws.user = u; }
+    }
+  } catch {}
 
   ws.on('pong', () => { ws.isAlive = true; });
 
@@ -290,7 +348,7 @@ const heartbeat = setInterval(() => {
 }, 30000);
 wss.on('close', () => clearInterval(heartbeat));
 
-function handleMessage(ws, msg) {
+async function handleMessage(ws, msg) {
   const { type } = msg;
   const d = (msg.payload && typeof msg.payload === 'object') ? msg.payload : msg;
 
@@ -298,9 +356,14 @@ function handleMessage(ws, msg) {
     switch (type) {
 
       case 'create_room': {
-        const name = d.playerName?.trim();
+        let name = d.playerName?.trim();
+        if (ws.user) name = ws.user.display_name;
         if (!name) return sendError(ws, 'Name is required');
         if (containsBadWord(name)) return sendError(ws, 'Please choose a different name');
+        if (!ws.user) {
+          const reserved = await userStore.findByDisplayName(name).catch(() => null);
+          if (reserved) return sendError(ws, 'That name is reserved by a registered account — log in to use it');
+        }
         const room = createRoom(rooms, name, ws, !!d.isPublic);
         console.log(`[ROOM] ${room.code} created by ${name} (${room.isPublic ? 'public' : 'private'})`);
         send(ws, {
@@ -314,12 +377,17 @@ function handleMessage(ws, msg) {
       }
 
       case 'join_room': {
-        const name = d.playerName?.trim();
+        let name = d.playerName?.trim();
         const code = d.roomCode?.trim().toUpperCase();
         const reconnectId = d.playerId || null;
+        if (ws.user) name = ws.user.display_name;
         if (!name) return sendError(ws, 'Name is required');
         if (!code) return sendError(ws, 'Room code is required');
         if (containsBadWord(name)) return sendError(ws, 'Please choose a different name');
+        if (!ws.user) {
+          const reserved = await userStore.findByDisplayName(name).catch(() => null);
+          if (reserved) return sendError(ws, 'That name is reserved by a registered account — log in to use it');
+        }
 
         const { reconnected } = joinRoom(rooms, code, name, ws, reconnectId);
         const room = rooms.get(code);
@@ -351,6 +419,7 @@ function handleMessage(ws, msg) {
 
         initGame(room);
         room.phase = 'playing';
+        room.gameStartedAt = Date.now();
 
         const names = room.playerOrder.map(id => room.players.get(id).name).join(', ');
         const top = room.gameState.discardPile[0];
@@ -376,9 +445,13 @@ function handleMessage(ws, msg) {
         if (gs.pendingSevenSwap && gs.pendingSevenSwapPlayerId !== ws.playerId) return sendError(ws, 'Waiting for swap');
         if (room.playerOrder[gs.currentPlayerIndex] !== ws.playerId) return sendError(ws, 'Not your turn');
 
-        playCard(room, ws.playerId, Number(d.cardIndex));
-
+        const idx = Number(d.cardIndex);
         const player = room.players.get(ws.playerId);
+        if (!Number.isInteger(idx) || idx < 0 || !player || idx >= player.hand.length) {
+          return sendError(ws, 'Invalid card index');
+        }
+        playCard(room, ws.playerId, idx);
+
         const played = gs.discardPile[gs.discardPile.length - 1];
         console.log(`[PLAY] ${player.name} played ${played.color} ${played.type}${played.value != null ? ' ' + played.value : ''} in ${room.code}`);
 
@@ -450,6 +523,8 @@ function handleMessage(ws, msg) {
       case 'catch_uno': {
         const room = rooms.get(ws.roomCode);
         if (!room || room.phase !== 'playing') return;
+        if (!d.targetPlayerId || typeof d.targetPlayerId !== 'string') return sendError(ws, 'Invalid catch target');
+        if (!room.players.has(d.targetPlayerId)) return sendError(ws, 'Catch target not in room');
         catchUno(room, ws.playerId, d.targetPlayerId);
         const caller = room.players.get(ws.playerId);
         const target = room.players.get(d.targetPlayerId);
@@ -491,6 +566,13 @@ function handleMessage(ws, msg) {
 
         broadcast(room, { type: 'chat_broadcast', ...entry });
         console.log(`[CHAT] ${room.code} ${player.name}: ${text}`);
+
+        if (db.isReady() && player.userId) {
+          chatStore.record({
+            roomCode: room.code, userId: player.userId,
+            displayName: player.name, text,
+          }).catch(e => console.error('[DB] chat record failed:', e.message));
+        }
         break;
       }
 
@@ -622,7 +704,21 @@ setInterval(() => {
   }
 }, 15 * 60 * 1000);
 
+const db = require('./db');
+
 const PORT = process.env.PORT || 5050;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`[SERVER] Uno running → http://localhost:${PORT}`);
+db.init().finally(() => {
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`[SERVER] Uno running → http://localhost:${PORT}`);
+  });
 });
+
+function shutdown(signal) {
+  console.log(`[SERVER] Received ${signal}, shutting down`);
+  clearInterval(heartbeat);
+  for (const ws of wss.clients) { try { ws.close(1001, 'server shutdown'); } catch {} }
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 5000).unref();
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT',  () => shutdown('SIGINT'));

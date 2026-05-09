@@ -14,6 +14,9 @@ let chatMessages  = [];
 let chatUnread    = 0;
 let activeChatTab = 'activity';
 let pendingKickId = null;
+let lastCurrentPlayerId = null;
+let isMuted = localStorage.getItem('uno_muted') === '1';
+let handSortEnabled = localStorage.getItem('uno_sort') === '1';
 
 // ── WebSocket ────────────────────────────────────────────────────
 function connect() {
@@ -40,6 +43,11 @@ function connect() {
 }
 
 function wsSend(msg) {
+  if (msg && typeof msg === 'object') {
+    if (msg.type === 'play_card') playSound('play');
+    else if (msg.type === 'draw_card') playSound('draw');
+    else if (msg.type === 'say_uno') playSound('uno');
+  }
   if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
 }
 
@@ -165,6 +173,12 @@ function handleServerMessage(msg) {
         if (reconnecting) showToast('Reconnected — back in the game!');
         reconnecting = false;
       }
+      // Clear stale prompts: if server no longer wants us to choose a color or pick a swap target,
+      // hide those modals (e.g. after a disconnect/reconnect mid-prompt).
+      const myColorPending = msg.pendingColorChoice && msg.pendingColorPlayerId === myPlayerId;
+      const mySwapPending  = msg.pendingSevenSwap && msg.pendingSevenSwapPlayerId === myPlayerId;
+      if (!myColorPending) hideModal('color-modal');
+      if (!mySwapPending) hideModal('seven-modal');
       renderGameState(msg);
       break;
     }
@@ -175,6 +189,7 @@ function handleServerMessage(msg) {
     }
 
     case 'game_over': {
+      playSound('win');
       showGameOver(msg.winnerName, msg.winnerId === myPlayerId);
       break;
     }
@@ -405,8 +420,18 @@ function renderGameState(state) {
   // UNO / Pass buttons
   const unoBtn  = document.getElementById('uno-btn');
   const passBtn = document.getElementById('pass-btn');
-  unoBtn.style.display  = (state.hand.length === 1 && !state.saidUno) ? 'flex' : 'none';
+  const showUno = (state.hand.length === 1 && !state.saidUno);
+  unoBtn.style.display = showUno ? 'flex' : 'none';
+  unoBtn.classList.toggle('uno-ready', showUno);
   passBtn.style.display = hasDrawn ? 'flex' : 'none';
+
+  // Sound + turn-change cue: only when it just became my turn (no spam on every render).
+  if (state.currentPlayerId !== lastCurrentPlayerId) {
+    if (state.currentPlayerId === myPlayerId && lastCurrentPlayerId !== null) {
+      playSound('your-turn');
+    }
+    lastCurrentPlayerId = state.currentPlayerId;
+  }
 
   renderHand(state, isMyTurn, hasDrawn, pendingDraw);
 
@@ -470,12 +495,28 @@ function renderOpponents(state) {
   });
 }
 
+function sortedHandIndexes(hand) {
+  const colorRank = { red: 0, yellow: 1, green: 2, blue: 3, wild: 4 };
+  const typeRank  = { number: 0, skip: 1, reverse: 2, draw_two: 3, wild: 4, wild_draw_four: 5 };
+  return hand.map((c, i) => i).sort((a, b) => {
+    const ca = hand[a], cb = hand[b];
+    const cr = (colorRank[ca.color] ?? 9) - (colorRank[cb.color] ?? 9);
+    if (cr !== 0) return cr;
+    const tr = (typeRank[ca.type] ?? 9) - (typeRank[cb.type] ?? 9);
+    if (tr !== 0) return tr;
+    return (ca.value ?? -1) - (cb.value ?? -1);
+  });
+}
+
 function renderHand(state, isMyTurn, hasDrawn, pendingDraw) {
   const area = document.getElementById('hand-area');
   area.innerHTML = '';
   const pendingDrawType = pendingDraw > 0 ? 'draw_two' : null;
 
-  state.hand.forEach((card, idx) => {
+  const order = handSortEnabled ? sortedHandIndexes(state.hand) : state.hand.map((_, i) => i);
+
+  for (const idx of order) {
+    const card = state.hand[idx];
     const isDrawnCard = hasDrawn && idx === state.hand.length - 1;
     const playable = isMyTurn
       && !state.pendingColorChoice
@@ -500,7 +541,7 @@ function renderHand(state, isMyTurn, hasDrawn, pendingDraw) {
     }
 
     area.appendChild(el);
-  });
+  }
 }
 
 // ── Seven-Swap Modal ─────────────────────────────────────────────
@@ -724,6 +765,24 @@ document.getElementById('copy-code-btn').addEventListener('click', () => {
   navigator.clipboard.writeText(code).then(() => showToast('Room code copied!'));
 });
 
+document.getElementById('share-link-btn').addEventListener('click', () => {
+  const code = document.getElementById('room-code-text').textContent;
+  if (!code || code === '----') return;
+  const url = `${location.origin}/?room=${encodeURIComponent(code)}`;
+  navigator.clipboard.writeText(url).then(() => showToast('Share link copied!'));
+});
+
+document.getElementById('mute-btn').addEventListener('click', () => setMuted(!isMuted));
+setMuted(isMuted); // initialize button label
+
+document.getElementById('sort-btn').addEventListener('click', () => {
+  handSortEnabled = !handSortEnabled;
+  localStorage.setItem('uno_sort', handSortEnabled ? '1' : '0');
+  document.getElementById('sort-btn').textContent = handSortEnabled ? '⇅ Sorted' : '⇅ Sort';
+  if (currentState) renderGameState(currentState);
+});
+document.getElementById('sort-btn').textContent = handSortEnabled ? '⇅ Sorted' : '⇅ Sort';
+
 document.getElementById('start-btn').addEventListener('click', () => {
   wsSend({ type: 'start_game' });
 });
@@ -842,5 +901,107 @@ function escHtml(str) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// ── Sound ────────────────────────────────────────────────────────
+// Audio files are optional — drop matching mp3s into public/sounds/
+// to enable. Missing files are silently ignored.
+const SOUND_FILES = {
+  'play': '/sounds/play.mp3',
+  'draw': '/sounds/draw.mp3',
+  'uno':  '/sounds/uno.mp3',
+  'win':  '/sounds/win.mp3',
+  'your-turn': '/sounds/your-turn.mp3',
+};
+const audioCache = {};
+function playSound(name) {
+  if (isMuted) return;
+  const url = SOUND_FILES[name];
+  if (!url) return;
+  let audio = audioCache[name];
+  if (!audio) {
+    audio = new Audio(url);
+    audio.preload = 'auto';
+    audio.volume = 0.5;
+    audioCache[name] = audio;
+  }
+  try { audio.currentTime = 0; audio.play().catch(() => {}); } catch {}
+}
+function setMuted(m) {
+  isMuted = m;
+  localStorage.setItem('uno_muted', m ? '1' : '0');
+  const btn = document.getElementById('mute-btn');
+  if (btn) btn.textContent = m ? '🔇' : '🔊';
+}
+
+// ── Auth ─────────────────────────────────────────────────────────
+let authedUser = null;
+
+async function bootAuth() {
+  let providers = { google: false, github: false };
+  try {
+    const r = await fetch('/auth/providers');
+    if (r.ok) providers = await r.json();
+  } catch {}
+
+  let me = { user: null };
+  try {
+    const r = await fetch('/auth/me');
+    if (r.ok) me = await r.json();
+  } catch {}
+
+  const section    = document.getElementById('auth-section');
+  const anon       = document.getElementById('auth-anonymous');
+  const loggedin   = document.getElementById('auth-loggedin');
+  const googleBtn  = document.getElementById('auth-google-btn');
+  const githubBtn  = document.getElementById('auth-github-btn');
+  const anyEnabled = providers.google || providers.github;
+
+  // Hide whole section if no providers configured AND not logged in.
+  if (!anyEnabled && !me.user) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+
+  if (me.user) {
+    authedUser = me.user;
+    // If the stored guest session uses a different name, clear it — fresh login is an explicit identity change.
+    const storedName = sessionStorage.getItem('uno_name');
+    if (storedName && storedName !== me.user.displayName) clearSession();
+    anon.style.display = 'none';
+    loggedin.style.display = 'flex';
+    document.getElementById('auth-name').textContent = me.user.displayName;
+    const s = me.user.stats || {};
+    document.getElementById('auth-stats').textContent =
+      `${s.wins || 0} win${s.wins === 1 ? '' : 's'} / ${s.games || 0} game${s.games === 1 ? '' : 's'}`;
+    // Lock the name input to the account display name
+    const cn = document.getElementById('create-name');
+    const jn = document.getElementById('join-name');
+    cn.value = me.user.displayName; cn.readOnly = true; cn.title = 'Locked to your account';
+    jn.value = me.user.displayName; jn.readOnly = true; jn.title = 'Locked to your account';
+    myPlayerName = me.user.displayName;
+  } else {
+    anon.style.display = 'block';
+    loggedin.style.display = 'none';
+    if (providers.google) googleBtn.style.display = 'inline-flex';
+    if (providers.github) githubBtn.style.display = 'inline-flex';
+  }
+}
+
+document.getElementById('auth-logout-btn').addEventListener('click', async () => {
+  try { await fetch('/auth/logout', { method: 'POST' }); } catch {}
+  location.reload();
+});
+
+// ── Utility ──────────────────────────────────────────────────────
+// (escHtml above)
+
+// ── URL prefill (?room=ABCD) ─────────────────────────────────────
+(function prefillFromUrl() {
+  const params = new URLSearchParams(location.search);
+  const code = (params.get('room') || '').toUpperCase().slice(0, 4);
+  if (code && /^[A-Z]{4}$/.test(code)) {
+    document.getElementById('join-code').value = code;
+    setTimeout(() => document.getElementById('join-name').focus(), 50);
+  }
+})();
+
 // ── Boot ─────────────────────────────────────────────────────────
+bootAuth();
 connect();

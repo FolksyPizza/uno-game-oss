@@ -4,31 +4,54 @@ This document is the authoritative technical reference for AI agents working in 
 
 ## Tech Stack
 
-- **Backend**: Node.js + Express + `ws` WebSockets
+- **Backend**: Node.js + Express + `ws` WebSockets, `cookie-parser`, `pg`
 - **Frontend**: Vanilla HTML/CSS/JS (no build step)
-- **State**: In-memory only (`Map` of rooms — no database)
-- **Packages**: `express`, `ws`, `uuid`
-- **Deployment**: Docker + Nginx Proxy Manager
+- **Live state**: In-memory `Map` of rooms (room/game state)
+- **Persistence**: Postgres 16 (users, sessions, chat history, game results) — optional; server runs in **degraded mode** if `DATABASE_URL` is absent or unreachable
+- **Auth**: Hand-rolled OAuth2 (Google + GitHub), signed session cookie, no `passport`
+- **Deployment**: Docker Compose (`uno` + `db` + Nginx Proxy Manager)
 
 ## Project Structure
 
 ```
-├── server.js           # HTTP + WebSocket server, message router, bot execution
+├── server.js               # HTTP + WS server, message router, bot execution, auth wiring
+├── auth/
+│   └── oauth.js            # /auth/<provider>[/callback], /auth/me, /auth/logout, cookie helpers
+├── db/
+│   ├── index.js            # pg Pool, migrate(), isReady() guard
+│   ├── users.js            # upsertUser, findById, findByDisplayName, sessions, getStats
+│   ├── chat.js             # record, recentForRoom
+│   ├── results.js          # record (writes game_results)
+│   └── migrations/001_init.sql
 ├── game/
-│   ├── deck.js         # 108-card deck creation and Fisher-Yates shuffle
-│   ├── gameState.js    # All UNO game logic (pure-ish functions operating on room)
-│   ├── room.js         # Room/player lifecycle, bot management
-│   ├── bot.js          # Bot AI — card scoring, color choice, swap targeting
-│   └── profanity.js    # Chat filter and username validator
+│   ├── deck.js             # 108-card deck creation and Fisher-Yates shuffle
+│   ├── gameState.js        # All UNO game logic (pure-ish functions operating on room)
+│   ├── room.js             # Room/player lifecycle, bot management
+│   ├── bot.js              # Bot AI — card scoring, color choice, swap targeting
+│   └── profanity.js        # Normalized filter — leet, diacritics, separator-collapsing
 ├── public/
-│   ├── index.html      # Lobby, waiting room, game screen (3 screens, single page)
-│   ├── style.css       # Card visuals, layout, modals
-│   └── client.js       # WebSocket client, rendering, event handling
+│   ├── index.html          # Lobby, waiting room, game screen (3 screens, single page)
+│   ├── style.css           # Card visuals, layout, modals, mobile, a11y
+│   ├── client.js           # WebSocket client, rendering, event handling, auth bootstrap
+│   └── sounds/             # Optional .mp3 effects (play, draw, uno, your-turn, win)
+├── tests/
+│   └── profanity.test.js   # node:test — filter bypass + false-positive cases
 ├── Dockerfile
-├── docker-compose.yml
+├── docker-compose.yml      # uno + db (postgres:16-alpine) + npm
 └── nginx/
-    └── setup-npm.sh    # One-shot TLS cert + NPM proxy configuration
+    └── setup-npm.sh        # One-shot TLS cert + NPM proxy configuration
 ```
+
+## Environment Variables
+
+| Var                    | Purpose                                                          |
+| ---------------------- | ---------------------------------------------------------------- |
+| `PORT`                 | HTTP port (default 5050)                                         |
+| `DATABASE_URL`         | Postgres DSN. Absent ⇒ degraded mode (guests only)               |
+| `SESSION_SECRET`       | Reserved for future use; signed-cookie session secret            |
+| `PUBLIC_URL`           | Base URL for OAuth callback construction                         |
+| `GOOGLE_CLIENT_ID/SECRET` | Optional; enables `/auth/google` route when both set            |
+| `GITHUB_CLIENT_ID/SECRET` | Optional; enables `/auth/github` route when both set            |
 
 ---
 
@@ -251,11 +274,11 @@ This document is the authoritative technical reference for AI agents working in 
 
 ---
 
-## Known Issues (pending fix)
+## Known Limitations
 
-- **`list_rooms`, `end_game`, `set_visibility`, `kick_player` return "Unknown message type"** — All four handlers were added in the latest commit. If you see this error, the running server process has not been restarted and is still executing old code. Restart with `node server.js` (or `docker compose up -d --build` for Docker).
-- **Bot random names not applying** — Same root cause: `game/room.js` was updated but the old process is still running. Restart the server.
-- **Duplicate names in a room** — Currently enforced only for connected players joining during waiting phase. Bot names are drawn from a pool but do not guarantee uniqueness across reconnects. A future fix should check all players (connected + disconnected) and bot names together on every join.
+- **Game state does not persist across server restart.** Live games are reset if the `uno` container restarts; only finished games are written to `game_results`.
+- **Reserved-name check requires DB.** In degraded mode (no `DATABASE_URL`), name uniqueness only applies within a single room — registered display names are not protected.
+- **Sound files are not bundled.** Drop CC0 clips into `public/sounds/` (see `public/sounds/README.md`); missing files are silently ignored.
 
 ---
 
