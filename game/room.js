@@ -1,5 +1,12 @@
 const { v4: uuidv4 } = require('uuid');
 
+const BOT_NAMES = [
+  'Blaze', 'Nova', 'Pixel', 'Chip', 'Bolt', 'Sparky', 'Echo', 'Glitch',
+  'Vector', 'Cipher', 'Turbo', 'Nexus', 'Zap', 'Neon', 'Orbit', 'Comet',
+  'Flux', 'Byte', 'Vortex', 'Phantom', 'Pulse', 'Rogue', 'Drift', 'Apex',
+  'Surge', 'Titan', 'Frost', 'Storm', 'Cruz', 'Blip', 'Arch', 'Jolt',
+];
+
 const DEFAULT_HOUSE_RULES = {
   stackDrawCards: false,
   drawUntilMatch: false,
@@ -16,7 +23,7 @@ function generateRoomCode(rooms) {
   return code;
 }
 
-function createRoom(rooms, playerName, ws) {
+function createRoom(rooms, playerName, ws, isPublic = false) {
   const code = generateRoomCode(rooms);
   const playerId = uuidv4();
   const player = {
@@ -38,6 +45,7 @@ function createRoom(rooms, playerName, ws) {
     gameState: null,
     houseRules: { ...DEFAULT_HOUSE_RULES },
     chat: [],
+    isPublic,
   };
   rooms.set(code, room);
   ws.playerId = playerId;
@@ -95,11 +103,15 @@ function joinRoom(rooms, code, playerName, ws, reconnectId = null) {
 
 function addBot(room) {
   if (room.players.size >= 8) throw new Error('Room is full (max 8 players)');
-  const botCount = [...room.players.values()].filter(p => p.isBot).length;
+  const usedNames = new Set([...room.players.values()].map(p => p.name));
+  const available = BOT_NAMES.filter(n => !usedNames.has(n));
+  const botName = available.length > 0
+    ? available[Math.floor(Math.random() * available.length)]
+    : `Bot ${[...room.players.values()].filter(p => p.isBot).length + 1}`;
   const botId = uuidv4();
   const bot = {
     id: botId,
-    name: `Bot ${botCount + 1}`,
+    name: botName,
     ws: null,
     hand: [],
     isConnected: true,
@@ -119,4 +131,4 @@ function removeBot(room, botId) {
   room.playerOrder = room.playerOrder.filter(id => id !== botId);
 }
 
-module.exports = { createRoom, joinRoom, generateRoomCode, addBot, removeBot, DEFAULT_HOUSE_RULES };
+module.exports = { createRoom, joinRoom, generateRoomCode, addBot, removeBot, DEFAULT_HOUSE_RULES, BOT_NAMES };

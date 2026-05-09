@@ -17,6 +17,10 @@
     <div class="lobby-section">
       <h3>Create a Room</h3>
       <input id="create-name" class="text-input" placeholder="Your name" maxlength="20" autocomplete="off">
+      <label class="public-toggle-label">
+        <input type="checkbox" id="create-public-toggle">
+        <span>Public room (show in browser)</span>
+      </label>
       <button id="create-btn" class="btn btn-red">Create Room</button>
     </div>
 
@@ -27,6 +31,18 @@
       <input id="join-name" class="text-input" placeholder="Your name" maxlength="20" autocomplete="off">
       <input id="join-code" class="text-input code-input" placeholder="Room code (e.g. ABCD)" maxlength="4" autocomplete="off">
       <button id="join-btn" class="btn btn-blue">Join Room</button>
+    </div>
+
+    <div class="lobby-divider"><span>or</span></div>
+
+    <div class="lobby-section">
+      <div class="browse-header">
+        <h3>Public Rooms</h3>
+        <button id="refresh-rooms-btn" class="btn btn-sm btn-ghost">⟳ Refresh</button>
+      </div>
+      <div id="rooms-list" class="rooms-list">
+        <div class="rooms-empty">Click Refresh to find rooms.</div>
+      </div>
     </div>
   </div>
 </div>
@@ -92,6 +108,14 @@
 
       <div id="active-rules-display" class="active-rules-display" style="display:none"></div>
 
+      <!-- Room visibility (host only) -->
+      <div id="room-visibility-section" class="room-visibility-section" style="display:none">
+        <label class="public-toggle-label">
+          <input type="checkbox" id="room-public-toggle">
+          <span>Public room (show in browser)</span>
+        </label>
+      </div>
+
       <div class="waiting-actions">
         <button id="start-btn" class="btn btn-green" disabled>▶ Start Game</button>
         <button id="leave-btn" class="btn btn-ghost">Leave</button>
@@ -122,6 +146,7 @@
     <div id="turn-banner" class="turn-banner">Waiting…</div>
     <div class="header-actions">
       <div id="active-rules-badges" class="header-rule-badges"></div>
+      <button id="end-game-btn" class="btn btn-sm btn-red" style="display:none">⏹ End Game</button>
       <button id="game-rules-btn" class="btn btn-sm btn-ghost">📖 Rules</button>
     </div>
   </div>
@@ -246,6 +271,30 @@
       <p>The first player to play all of their cards wins the round!</p>
     </div>
     <button id="close-rules-btn" class="btn btn-red close-rules-btn">Close</button>
+  </div>
+</div>
+
+<!-- ── End Game Confirm Modal ─────────────────────────────────── -->
+<div id="endgame-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box confirm-box">
+    <h3>End Game Early?</h3>
+    <p class="confirm-sub">This will cancel the current game and return everyone to the waiting room.</p>
+    <div class="confirm-actions">
+      <button id="endgame-yes-btn" class="btn btn-red">Yes, End Game</button>
+      <button id="endgame-no-btn" class="btn btn-ghost">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Kick Player Confirm Modal ──────────────────────────────── -->
+<div id="kick-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box confirm-box">
+    <h3>Kick Player?</h3>
+    <p class="confirm-sub">Remove <strong id="kick-player-name">this player</strong> from the room?</p>
+    <div class="confirm-actions">
+      <button id="kick-yes-btn" class="btn btn-red">Yes, Kick</button>
+      <button id="kick-no-btn" class="btn btn-ghost">Cancel</button>
+    </div>
   </div>
 </div>
 

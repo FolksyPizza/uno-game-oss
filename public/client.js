@@ -13,6 +13,7 @@ let currentHouseRules = {};
 let chatMessages  = [];
 let chatUnread    = 0;
 let activeChatTab = 'activity';
+let pendingKickId = null;
 
 // ── WebSocket ────────────────────────────────────────────────────
 function connect() {
@@ -108,7 +109,7 @@ function handleServerMessage(msg) {
       if (msg.chatHistory) loadChatHistory(msg.chatHistory);
       saveSession();
       showScreen('waiting-screen');
-      renderWaiting(msg.players, msg.hostId, msg.roomCode, msg.houseRules);
+      renderWaiting(msg.players, msg.hostId, msg.roomCode, msg.houseRules, msg.isPublic);
       break;
     }
 
@@ -121,7 +122,7 @@ function handleServerMessage(msg) {
       saveSession();
       hideReconnectBanner();
       showScreen('waiting-screen');
-      renderWaiting(msg.players, msg.hostId, msg.roomCode, msg.houseRules);
+      renderWaiting(msg.players, msg.hostId, msg.roomCode, msg.houseRules, msg.isPublic);
       if (reconnecting) showToast('Reconnected to room!');
       reconnecting = false;
       break;
@@ -132,8 +133,9 @@ function handleServerMessage(msg) {
       currentHouseRules = msg.houseRules || {};
       if (currentScreen === 'game-screen') {
         showScreen('waiting-screen');
+        document.getElementById('end-game-btn').style.display = 'none';
       }
-      renderWaiting(msg.players, msg.hostId, myRoomCode, msg.houseRules);
+      renderWaiting(msg.players, msg.hostId, myRoomCode, msg.houseRules, msg.isPublic);
       break;
     }
 
@@ -144,6 +146,12 @@ function handleServerMessage(msg) {
       switchTab('activity');
       showScreen('game-screen');
       document.getElementById('game-room-code').textContent = myRoomCode;
+      document.getElementById('end-game-btn').style.display = isHost ? 'inline-flex' : 'none';
+      break;
+    }
+
+    case 'rooms_list': {
+      renderRoomsList(msg.rooms);
       break;
     }
 
@@ -153,6 +161,7 @@ function handleServerMessage(msg) {
       if (currentScreen !== 'game-screen') {
         showScreen('game-screen');
         document.getElementById('game-room-code').textContent = myRoomCode;
+        document.getElementById('end-game-btn').style.display = isHost ? 'inline-flex' : 'none';
         if (reconnecting) showToast('Reconnected — back in the game!');
         reconnecting = false;
       }
@@ -179,6 +188,17 @@ function handleServerMessage(msg) {
       break;
     }
 
+    case 'kicked': {
+      clearSession();
+      myPlayerId = myRoomCode = myPlayerName = null;
+      isHost = false;
+      hideReconnectBanner();
+      reconnecting = false;
+      showScreen('lobby-screen');
+      showToast(msg.message || 'You were kicked from the room.', true);
+      break;
+    }
+
     case 'error': {
       showToast(msg.message, true);
       if (!myPlayerId) {
@@ -193,7 +213,7 @@ function handleServerMessage(msg) {
 }
 
 // ── Waiting Room ─────────────────────────────────────────────────
-function renderWaiting(players, hostId, code, houseRules) {
+function renderWaiting(players, hostId, code, houseRules, isPublic = false) {
   document.getElementById('room-code-text').textContent = code || '----';
   document.getElementById('player-count').textContent   = players.length;
 
@@ -228,6 +248,14 @@ function renderWaiting(players, hostId, code, houseRules) {
       b.className = 'bot-badge';
       b.textContent = 'CPU';
       item.appendChild(b);
+    } else if (isHost && p.id !== myPlayerId) {
+      const kb = document.createElement('button');
+      kb.className = 'kick-btn';
+      kb.dataset.id = p.id;
+      kb.dataset.name = p.name;
+      kb.title = 'Kick player';
+      kb.textContent = '✕';
+      item.appendChild(kb);
     }
     list.appendChild(item);
   });
@@ -237,6 +265,15 @@ function renderWaiting(players, hostId, code, houseRules) {
     btn.addEventListener('click', e => {
       e.preventDefault();
       wsSend({ type: 'remove_bot', botId: btn.dataset.id });
+    });
+  });
+
+  // Kick-player buttons
+  list.querySelectorAll('.kick-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      pendingKickId = btn.dataset.id;
+      document.getElementById('kick-player-name').textContent = btn.dataset.name;
+      showModal('kick-modal');
     });
   });
 
@@ -257,6 +294,18 @@ function renderWaiting(players, hostId, code, houseRules) {
   }
 
   renderHouseRules(houseRules || {});
+
+  // Room visibility toggle (host only)
+  const visSection = document.getElementById('room-visibility-section');
+  const visTog = document.getElementById('room-public-toggle');
+  if (isHost) {
+    visSection.style.display = 'block';
+    visTog.onchange = null;
+    visTog.checked = !!isPublic;
+    visTog.onchange = () => wsSend({ type: 'set_visibility', isPublic: visTog.checked });
+  } else {
+    visSection.style.display = 'none';
+  }
 }
 
 function renderHouseRules(rules) {
@@ -598,13 +647,49 @@ function updateChatUnread() {
   }
 }
 
+// ── Public Rooms Browser ─────────────────────────────────────────
+function renderRoomsList(roomsList) {
+  const container = document.getElementById('rooms-list');
+  if (!roomsList || roomsList.length === 0) {
+    container.innerHTML = '<div class="rooms-empty">No rooms found.</div>';
+    return;
+  }
+  container.innerHTML = roomsList.map(r => `
+    <div class="room-entry">
+      <div class="room-entry-info">
+        <span class="room-entry-host">${escHtml(r.hostName)}'s room</span>
+        <span class="room-entry-meta">${r.playerCount} player${r.playerCount !== 1 ? 's' : ''}${r.botCount > 0 ? ` + ${r.botCount} bot${r.botCount !== 1 ? 's' : ''}` : ''}</span>
+      </div>
+      <button class="btn btn-sm btn-blue join-public-btn" data-code="${r.code}">Join</button>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.join-public-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = document.getElementById('join-name').value.trim()
+        || document.getElementById('create-name').value.trim();
+      if (!name) {
+        document.getElementById('join-name').focus();
+        return showToast('Enter your name first', true);
+      }
+      document.getElementById('join-code').value = btn.dataset.code;
+      document.getElementById('join-name').value = name;
+      clearSession();
+      myPlayerName = name;
+      myRoomCode   = btn.dataset.code;
+      wsSend({ type: 'join_room', playerName: name, roomCode: btn.dataset.code });
+    });
+  });
+}
+
 // ── Event listeners: Lobby ───────────────────────────────────────
 document.getElementById('create-btn').addEventListener('click', () => {
   const name = document.getElementById('create-name').value.trim();
   if (!name) return showToast('Enter your name', true);
+  const isPublic = document.getElementById('create-public-toggle').checked;
   clearSession();
   myPlayerName = name;
-  wsSend({ type: 'create_room', playerName: name });
+  wsSend({ type: 'create_room', playerName: name, isPublic });
 });
 
 document.getElementById('create-name').addEventListener('keydown', e => {
@@ -710,6 +795,41 @@ document.getElementById('waiting-rules-btn').addEventListener('click', openRules
 document.getElementById('close-rules-btn').addEventListener('click', () => hideModal('rules-modal'));
 document.getElementById('rules-modal').addEventListener('click', e => {
   if (e.target === e.currentTarget) hideModal('rules-modal');
+});
+
+// ── End Game (host) ──────────────────────────────────────────────
+document.getElementById('end-game-btn').addEventListener('click', () => {
+  showModal('endgame-modal');
+});
+document.getElementById('endgame-yes-btn').addEventListener('click', () => {
+  hideModal('endgame-modal');
+  wsSend({ type: 'end_game' });
+});
+document.getElementById('endgame-no-btn').addEventListener('click', () => hideModal('endgame-modal'));
+document.getElementById('endgame-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) hideModal('endgame-modal');
+});
+
+// ── Kick Player (host) ───────────────────────────────────────────
+document.getElementById('kick-yes-btn').addEventListener('click', () => {
+  if (pendingKickId) {
+    wsSend({ type: 'kick_player', targetId: pendingKickId });
+    pendingKickId = null;
+  }
+  hideModal('kick-modal');
+});
+document.getElementById('kick-no-btn').addEventListener('click', () => {
+  pendingKickId = null;
+  hideModal('kick-modal');
+});
+document.getElementById('kick-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) { pendingKickId = null; hideModal('kick-modal'); }
+});
+
+// ── Public rooms refresh ─────────────────────────────────────────
+document.getElementById('refresh-rooms-btn').addEventListener('click', () => {
+  document.getElementById('rooms-list').innerHTML = '<div class="rooms-empty">Loading…</div>';
+  wsSend({ type: 'list_rooms' });
 });
 
 // ── Utility ──────────────────────────────────────────────────────

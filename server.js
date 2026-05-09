@@ -53,6 +53,7 @@ function roomInfo(room) {
     players: roomPlayers(room),
     hostId: room.hostId,
     houseRules: room.houseRules,
+    isPublic: room.isPublic || false,
   };
 }
 
@@ -136,15 +137,7 @@ function handleDisconnect(ws) {
       return;
     }
 
-    if (connected.length === 1 && room.playerOrder.filter(id => {
-      const p = room.players.get(id);
-      return p && p.isConnected;
-    }).length <= 1) {
-      room.gameState.winnerId = connected[0].id;
-      handleGameOver(room);
-      return;
-    }
-
+    // Don't auto-end game — disconnected players' turns are skipped; they can rejoin
     const gs = room.gameState;
     if (room.playerOrder[gs.currentPlayerIndex] === ws.playerId) {
       if (gs.pendingColorChoice && gs.pendingColorPlayerId === ws.playerId) {
@@ -287,8 +280,8 @@ function handleMessage(ws, msg) {
         const name = d.playerName?.trim();
         if (!name) return sendError(ws, 'Name is required');
         if (containsBadWord(name)) return sendError(ws, 'Please choose a different name');
-        const room = createRoom(rooms, name, ws);
-        console.log(`[ROOM] ${room.code} created by ${name}`);
+        const room = createRoom(rooms, name, ws, !!d.isPublic);
+        console.log(`[ROOM] ${room.code} created by ${name} (${room.isPublic ? 'public' : 'private'})`);
         send(ws, {
           type: 'room_created',
           roomCode: room.code,
@@ -521,6 +514,71 @@ function handleMessage(ws, msg) {
         console.log(`[BOT]  Bot removed from ${room.code}`);
         broadcast(room, { type: 'room_updated', ...roomInfo(room) });
         send(ws, { type: 'room_updated', ...roomInfo(room) });
+        break;
+      }
+
+      case 'set_visibility': {
+        const room = rooms.get(ws.roomCode);
+        if (!room) return sendError(ws, 'Room not found');
+        if (room.hostId !== ws.playerId) return sendError(ws, 'Only the host can change visibility');
+        if (room.phase !== 'waiting') return sendError(ws, 'Cannot change visibility mid-game');
+        room.isPublic = !!d.isPublic;
+        console.log(`[VIS]  ${room.code} is now ${room.isPublic ? 'public' : 'private'}`);
+        broadcast(room, { type: 'room_updated', ...roomInfo(room) });
+        send(ws, { type: 'room_updated', ...roomInfo(room) });
+        break;
+      }
+
+      case 'kick_player': {
+        const room = rooms.get(ws.roomCode);
+        if (!room) return sendError(ws, 'Room not found');
+        if (room.hostId !== ws.playerId) return sendError(ws, 'Only the host can kick players');
+        if (room.phase !== 'waiting') return sendError(ws, 'Cannot kick players mid-game');
+        const target = room.players.get(d.targetId);
+        if (!target || target.isBot) return sendError(ws, 'Invalid target');
+        if (d.targetId === ws.playerId) return sendError(ws, 'Cannot kick yourself');
+
+        send(target.ws, { type: 'kicked', message: 'You were removed from the room by the host.' });
+        target.ws = null;
+        target.isConnected = false;
+        room.players.delete(d.targetId);
+        room.playerOrder = room.playerOrder.filter(id => id !== d.targetId);
+        console.log(`[KICK] ${target.name} kicked from ${room.code} by host`);
+
+        if (room.players.size === 0 || [...room.players.values()].every(p => p.isBot)) {
+          rooms.delete(room.code);
+          return;
+        }
+        broadcast(room, { type: 'room_updated', ...roomInfo(room) });
+        send(ws, { type: 'room_updated', ...roomInfo(room) });
+        break;
+      }
+
+      case 'end_game': {
+        const room = rooms.get(ws.roomCode);
+        if (!room) return sendError(ws, 'Room not found');
+        if (room.hostId !== ws.playerId) return sendError(ws, 'Only the host can end the game');
+        if (room.phase !== 'playing') return sendError(ws, 'No active game');
+
+        for (const p of room.players.values()) { p.hand = []; p.saidUno = false; }
+        room.phase = 'waiting';
+        room.gameState = null;
+        console.log(`[END]  Host ended game early in ${room.code}`);
+        broadcast(room, { type: 'room_updated', ...roomInfo(room) });
+        send(ws, { type: 'room_updated', ...roomInfo(room) });
+        break;
+      }
+
+      case 'list_rooms': {
+        const publicRooms = [...rooms.values()]
+          .filter(r => r.isPublic && r.phase === 'waiting')
+          .map(r => ({
+            code: r.code,
+            hostName: r.players.get(r.hostId)?.name || '?',
+            playerCount: [...r.players.values()].filter(p => p.isConnected && !p.isBot).length,
+            botCount: [...r.players.values()].filter(p => p.isBot).length,
+          }));
+        send(ws, { type: 'rooms_list', rooms: publicRooms });
         break;
       }
 

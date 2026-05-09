@@ -1014,3 +1014,82 @@ body {
   animation: fadeIn 0.2s ease;
 }
 .toast.error { border-color: rgba(231,76,60,0.5); background: rgba(100,20,20,0.92); }
+
+/* ── Public room toggle ───────────────────────────────────── */
+.public-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  margin: 4px 0 8px;
+}
+.public-toggle-label input[type=checkbox] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--green);
+  cursor: pointer;
+}
+.room-visibility-section { margin: 8px 0 4px; }
+
+/* ── Browse public rooms ──────────────────────────────────── */
+.browse-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.browse-header h3 { margin: 0; }
+.rooms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  min-height: 44px;
+}
+.rooms-empty {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 10px 0;
+}
+.room-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.room-entry-info { display: flex; flex-direction: column; gap: 2px; }
+.room-entry-host { font-size: 14px; font-weight: 600; }
+.room-entry-meta { font-size: 12px; color: var(--muted); }
+
+/* ── Confirm modal ────────────────────────────────────────── */
+.confirm-box { max-width: 360px; width: 90vw; text-align: center; }
+.confirm-box h3 { font-size: 20px; margin-bottom: 10px; }
+.confirm-sub { color: var(--muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+.confirm-actions { display: flex; gap: 12px; justify-content: center; }
+.confirm-actions .btn { min-width: 120px; }
+
+/* ── Kick button (waiting room) ───────────────────────────── */
+.kick-btn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid rgba(231,76,60,0.4);
+  color: rgba(231,76,60,0.8);
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.kick-btn:hover { background: rgba(231,76,60,0.2); color: #e74c3c; }
