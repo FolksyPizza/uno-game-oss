@@ -1,0 +1,5 @@
+node_modules/
+nginx/ssl/*.key
+nginx/ssl/*.crt
+npm-data/
+*.log

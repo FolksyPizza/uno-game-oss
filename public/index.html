@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UNO</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── Lobby ─────────────────────────────────────────────────── -->
+<div id="lobby-screen" class="screen">
+  <div class="lobby-card">
+    <div class="uno-logo">UNO</div>
+    <p class="lobby-subtitle">Multiplayer Card Game</p>
+
+    <div class="lobby-section">
+      <h3>Create a Room</h3>
+      <input id="create-name" class="text-input" placeholder="Your name" maxlength="20" autocomplete="off">
+      <button id="create-btn" class="btn btn-red">Create Room</button>
+    </div>
+
+    <div class="lobby-divider"><span>or</span></div>
+
+    <div class="lobby-section">
+      <h3>Join a Room</h3>
+      <input id="join-name" class="text-input" placeholder="Your name" maxlength="20" autocomplete="off">
+      <input id="join-code" class="text-input code-input" placeholder="Room code (e.g. ABCD)" maxlength="4" autocomplete="off">
+      <button id="join-btn" class="btn btn-blue">Join Room</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Waiting Room ───────────────────────────────────────────── -->
+<div id="waiting-screen" class="screen" style="display:none">
+  <div class="waiting-layout">
+    <div class="waiting-card">
+      <h2>Waiting Room</h2>
+
+      <div class="room-code-area">
+        <span class="room-code-label">Room Code</span>
+        <div class="room-code-display">
+          <span id="room-code-text">----</span>
+          <button id="copy-code-btn" class="btn btn-sm btn-ghost" title="Copy code">⎘ Copy</button>
+        </div>
+      </div>
+
+      <div class="player-list-section">
+        <div class="player-list-header">
+          Players <span id="player-count">0</span>/8
+          <button id="add-bot-btn" class="btn btn-sm btn-ghost" style="display:none" title="Add CPU player">+ Bot</button>
+        </div>
+        <div id="player-list" class="player-list"></div>
+      </div>
+
+      <p id="waiting-status" class="waiting-status">Waiting for players…</p>
+
+      <!-- House Rules (host: toggles / non-host: read-only badges) -->
+      <div id="house-rules-host" class="house-rules-section" style="display:none">
+        <div class="hr-header">House Rules</div>
+        <div class="hr-grid">
+          <label class="hr-item">
+            <div class="hr-text">
+              <span class="hr-name">Stack Draw Cards</span>
+              <span class="hr-desc">+2 on +2 — next player stacks or draws total</span>
+            </div>
+            <input type="checkbox" class="hr-toggle" id="rule-stack" data-rule="stackDrawCards">
+          </label>
+          <label class="hr-item">
+            <div class="hr-text">
+              <span class="hr-name">Draw Until Match</span>
+              <span class="hr-desc">Keep drawing until you get a playable card</span>
+            </div>
+            <input type="checkbox" class="hr-toggle" id="rule-drawmatch" data-rule="drawUntilMatch">
+          </label>
+          <label class="hr-item">
+            <div class="hr-text">
+              <span class="hr-name">Force Play</span>
+              <span class="hr-desc">Must play if you have a matching card</span>
+            </div>
+            <input type="checkbox" class="hr-toggle" id="rule-forceplay" data-rule="forcePlay">
+          </label>
+          <label class="hr-item">
+            <div class="hr-text">
+              <span class="hr-name">Seven-O Rules</span>
+              <span class="hr-desc">7: swap hands with a player · 0: rotate all hands</span>
+            </div>
+            <input type="checkbox" class="hr-toggle" id="rule-seveno" data-rule="sevenO">
+          </label>
+        </div>
+      </div>
+
+      <div id="active-rules-display" class="active-rules-display" style="display:none"></div>
+
+      <div class="waiting-actions">
+        <button id="start-btn" class="btn btn-green" disabled>▶ Start Game</button>
+        <button id="leave-btn" class="btn btn-ghost">Leave</button>
+      </div>
+
+      <div class="waiting-footer">
+        <button id="waiting-rules-btn" class="btn btn-sm btn-ghost">📖 Rules</button>
+      </div>
+    </div>
+
+    <!-- Chat Panel (waiting room) -->
+    <div class="waiting-chat-panel">
+      <div class="chat-panel-header">Chat</div>
+      <div id="waiting-chat-log" class="chat-log"></div>
+      <div class="chat-input-row">
+        <input id="waiting-chat-input" class="chat-input" placeholder="Say something…" maxlength="200" autocomplete="off">
+        <button id="waiting-chat-send" class="btn btn-sm btn-ghost">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Game Screen ────────────────────────────────────────────── -->
+<div id="game-screen" class="screen" style="display:none">
+
+  <div class="game-header">
+    <div class="game-room-info">Room: <strong id="game-room-code">----</strong></div>
+    <div id="turn-banner" class="turn-banner">Waiting…</div>
+    <div class="header-actions">
+      <div id="active-rules-badges" class="header-rule-badges"></div>
+      <button id="game-rules-btn" class="btn btn-sm btn-ghost">📖 Rules</button>
+    </div>
+  </div>
+
+  <div id="opponents-panel" class="opponents-panel"></div>
+
+  <div class="play-area">
+    <div class="pile-group">
+      <div id="draw-pile-btn" class="draw-pile" title="Click to draw">
+        <div class="card back">
+          <span class="card-corner-tl">🂠</span>
+          <span class="card-center-sym">UNO</span>
+          <span class="card-corner-br">🂠</span>
+        </div>
+        <div class="pile-count"><span id="draw-count">0</span> left</div>
+      </div>
+      <div class="pile-label">Draw Pile</div>
+    </div>
+
+    <div id="discard-area" class="discard-area">
+      <div id="discard-pile" class="discard-card-wrapper"></div>
+      <div class="pile-label">Discard</div>
+    </div>
+
+    <div class="play-controls">
+      <div id="direction-indicator" class="direction-indicator" title="Play direction">↻</div>
+      <div id="pending-draw-badge" class="pending-draw-badge" style="display:none"></div>
+      <button id="uno-btn" class="btn btn-uno" style="display:none">UNO!</button>
+      <button id="pass-btn" class="btn btn-pass" style="display:none">Pass</button>
+    </div>
+  </div>
+
+  <!-- Log + Chat combined panel with tabs -->
+  <div class="log-chat-panel">
+    <div class="log-chat-tabs">
+      <button class="log-tab active" data-tab="activity" id="tab-activity">Activity</button>
+      <button class="log-tab" data-tab="chat" id="tab-chat">Chat <span id="chat-unread" class="chat-unread" style="display:none">0</span></button>
+    </div>
+    <div id="activity-content" class="tab-content">
+      <div id="activity-log" class="activity-log"></div>
+    </div>
+    <div id="chat-content" class="tab-content" style="display:none">
+      <div id="game-chat-log" class="chat-log game-chat-log"></div>
+      <div class="chat-input-row">
+        <input id="game-chat-input" class="chat-input" placeholder="Chat…" maxlength="200" autocomplete="off">
+        <button id="game-chat-send" class="btn btn-sm btn-ghost">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="hand-section">
+    <div class="hand-label">Your Hand <span id="hand-count" class="hand-count"></span></div>
+    <div id="hand-area" class="hand-area"></div>
+  </div>
+
+</div>
+
+<!-- ── Color Chooser Modal ────────────────────────────────────── -->
+<div id="color-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box color-modal-box">
+    <h3>Choose a Color</h3>
+    <div class="color-grid">
+      <button class="color-btn btn-red"    data-color="red">Red</button>
+      <button class="color-btn btn-blue"   data-color="blue">Blue</button>
+      <button class="color-btn btn-green"  data-color="green">Green</button>
+      <button class="color-btn btn-yellow" data-color="yellow">Yellow</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Seven-Swap Modal ───────────────────────────────────────── -->
+<div id="seven-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box seven-modal-box">
+    <h3>🔄 Swap hands with…</h3>
+    <p class="seven-modal-sub">Choose a player to swap your hand with</p>
+    <div id="seven-swap-list" class="seven-swap-list"></div>
+  </div>
+</div>
+
+<!-- ── Game Over Overlay ──────────────────────────────────────── -->
+<div id="gameover-overlay" class="modal-overlay" style="display:none">
+  <div class="modal-box gameover-box">
+    <div class="gameover-emoji">🎉</div>
+    <h2 id="gameover-text">Someone wins!</h2>
+    <p class="gameover-sub">Returning to waiting room…</p>
+    <div class="gameover-progress"><div id="gameover-bar" class="gameover-bar"></div></div>
+  </div>
+</div>
+
+<!-- ── Rules Modal ────────────────────────────────────────────── -->
+<div id="rules-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box rules-box">
+    <h2>🃏 How to Play UNO</h2>
+    <div class="rules-content">
+      <h4>Setup</h4>
+      <p>Each player is dealt <strong>7 cards</strong>. The remaining cards form the draw pile. One card is flipped to start the discard pile.</p>
+
+      <h4>On Your Turn</h4>
+      <p>Play a card from your hand that matches the top discard card by <strong>color</strong>, <strong>number</strong>, or <strong>symbol</strong>. If you can't play, draw one card — you may then play it if it matches, or pass.</p>
+
+      <h4>Special Cards</h4>
+      <ul>
+        <li><strong>Skip (⊘)</strong> — The next player loses their turn.</li>
+        <li><strong>Reverse (↺)</strong> — Reverses play direction. With 2 players, acts like Skip.</li>
+        <li><strong>Draw Two (+2)</strong> — Next player draws 2 cards and loses their turn.</li>
+        <li><strong>Wild (★)</strong> — Play anytime. You choose the new active color.</li>
+        <li><strong>Wild Draw Four (+4)</strong> — Play only if you have no cards matching the current color. You choose the new color, and the next player draws 4 cards and loses their turn.</li>
+      </ul>
+
+      <h4>UNO!</h4>
+      <p>When you play down to <strong>1 card</strong>, click the <strong>UNO!</strong> button immediately. If another player catches you before you do, you draw 2 penalty cards.</p>
+
+      <h4>House Rules</h4>
+      <ul>
+        <li><strong>Stack Draw Cards</strong> — When a +2 is played, the next player can play another +2 to pass it on. The first player who can't stack must draw the accumulated total.</li>
+        <li><strong>Draw Until Match</strong> — Instead of drawing one card, you keep drawing until you get a card you can play.</li>
+        <li><strong>Force Play</strong> — You cannot draw if you have a playable card in your hand.</li>
+        <li><strong>Seven-O Rules</strong> — Playing a 7 lets you swap hands with any other player. Playing a 0 rotates everyone's hands in the direction of play.</li>
+      </ul>
+
+      <h4>Winning</h4>
+      <p>The first player to play all of their cards wins the round!</p>
+    </div>
+    <button id="close-rules-btn" class="btn btn-red close-rules-btn">Close</button>
+  </div>
+</div>
+
+<!-- ── Reconnect banner ───────────────────────────────────────── -->
+<div id="reconnect-banner" class="reconnect-banner" style="display:none">
+  <span class="reconnect-spinner"></span>
+  Reconnecting…
+</div>
+
+<!-- ── Toast notification ─────────────────────────────────────── -->
+<div id="toast" class="toast" style="display:none"></div>
+
+<script src="client.js"></script>
+</body>
+</html>
