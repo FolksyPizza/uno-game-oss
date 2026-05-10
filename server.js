@@ -1,5 +1,7 @@
 const express = require('express');
 const http = require('http');
+const https = require('https');
+const fs = require('node:fs');
 const { WebSocketServer } = require('ws');
 const path = require('path');
 const cookieParser = require('cookie-parser');
@@ -16,7 +18,24 @@ const chatStore = require('./db/chat');
 const resultsStore = require('./db/results');
 
 const app = express();
-const server = http.createServer(app);
+
+// HTTPS if TLS_CERT + TLS_KEY are set; HTTP otherwise.
+let server;
+if (process.env.TLS_CERT && process.env.TLS_KEY) {
+  try {
+    server = https.createServer({
+      cert: fs.readFileSync(process.env.TLS_CERT),
+      key:  fs.readFileSync(process.env.TLS_KEY),
+    }, app);
+    console.log('[SERVER] TLS enabled');
+  } catch (e) {
+    console.error('[SERVER] TLS cert/key unreadable, falling back to HTTP:', e.message);
+    server = http.createServer(app);
+  }
+} else {
+  server = http.createServer(app);
+}
+
 const wss = new WebSocketServer({ server });
 
 const rooms = new Map();
@@ -669,6 +688,90 @@ async function handleMessage(ws, msg) {
         console.log(`[END]  Host ended game early in ${room.code}`);
         broadcast(room, { type: 'room_updated', ...roomInfo(room) });
         send(ws, { type: 'room_updated', ...roomInfo(room) });
+        break;
+      }
+
+      case 'leave_game': {
+        const room = rooms.get(ws.roomCode);
+        if (!room) break;
+        const player = room.players.get(ws.playerId);
+        if (!player) break;
+
+        const wasCurrentTurn = room.phase === 'playing'
+          && room.gameState
+          && room.playerOrder[room.gameState.currentPlayerIndex] === ws.playerId;
+
+        // Hard remove (intent is leave, not transient disconnect).
+        try { player.ws = null; } catch (_) {}
+        player.isConnected = false;
+        room.players.delete(ws.playerId);
+        room.playerOrder = room.playerOrder.filter(id => id !== ws.playerId);
+        ws._disconnectHandled = true;
+        ws.roomCode = null;
+        ws.playerId = null;
+
+        console.log(`[LEAVE] ${player.name} left ${room.code} (phase: ${room.phase})`);
+
+        // Reassign host if the leaver was host
+        if (room.hostId === player.id && room.playerOrder.length > 0) {
+          const newHostId = room.playerOrder.find(id => !room.players.get(id).isBot) || room.playerOrder[0];
+          const newHost = room.players.get(newHostId);
+          if (newHost) {
+            newHost.isHost = true;
+            room.hostId = newHostId;
+            console.log(`[HOST] ${newHost.name} is now host of ${room.code}`);
+          }
+        }
+
+        // If room is empty (or only bots), drop it.
+        const humans = [...room.players.values()].filter(p => !p.isBot);
+        if (room.players.size === 0 || humans.length === 0) {
+          rooms.delete(room.code);
+          console.log(`[ROOM] ${room.code} deleted (empty after leave)`);
+          break;
+        }
+
+        // Mid-game cleanup: if the leaver was mid-decision or mid-turn, recover the game state.
+        if (room.phase === 'playing' && room.gameState) {
+          const gs = room.gameState;
+          // Clear any pending state owned by the leaver
+          if (gs.pendingColorChoice && gs.pendingColorPlayerId === player.id) {
+            gs.pendingColorChoice = false;
+            gs.pendingColorPlayerId = null;
+          }
+          if (gs.pendingSevenSwap && gs.pendingSevenSwapPlayerId === player.id) {
+            gs.pendingSevenSwap = false;
+            gs.pendingSevenSwapPlayerId = null;
+          }
+          // Fix currentPlayerIndex now that the order array is shorter
+          if (gs.currentPlayerIndex >= room.playerOrder.length) {
+            gs.currentPlayerIndex = 0;
+          } else if (wasCurrentTurn) {
+            // The leaver was the active player; advance the index isn't needed because
+            // the array shrunk under us — currentPlayerIndex now points at the next player.
+            // Just clamp:
+            gs.currentPlayerIndex = gs.currentPlayerIndex % room.playerOrder.length;
+          }
+
+          // If only one player remains, end the game cleanly.
+          const remainingPlayables = room.playerOrder.filter(id => {
+            const p = room.players.get(id);
+            return p && (p.isBot || p.isConnected);
+          });
+          if (remainingPlayables.length < 2) {
+            console.log(`[GAME] ${room.code} ending — not enough players after leave`);
+            for (const p of room.players.values()) { p.hand = []; p.saidUno = false; }
+            room.phase = 'waiting';
+            room.gameState = null;
+            broadcast(room, { type: 'room_updated', ...roomInfo(room) });
+            break;
+          }
+
+          broadcastGameState(room);
+          checkAndTriggerBot(room);
+        }
+
+        broadcast(room, { type: 'room_updated', ...roomInfo(room) });
         break;
       }
 

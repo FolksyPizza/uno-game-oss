@@ -104,6 +104,26 @@ function showToast(msg, isErr = false) {
 function showModal(id)  { document.getElementById(id).style.display = 'flex'; }
 function hideModal(id)  { document.getElementById(id).style.display = 'none'; }
 
+// Defensively wipe game-screen state — call when leaving / ending / restarting a match,
+// so a stuck modal or stale render can never trap the user on a "glitched" game screen.
+function resetGameUI() {
+  hideModal('color-modal');
+  hideModal('seven-modal');
+  hideModal('gameover-overlay');
+  hideModal('endgame-modal');
+  currentState = null;
+  const ids = ['hand-area', 'opponents-panel', 'discard-pile', 'activity-log', 'game-chat-log', 'active-rules-badges'];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
+  const drawCount = document.getElementById('draw-count'); if (drawCount) drawCount.textContent = '0';
+  const handCount = document.getElementById('hand-count'); if (handCount) handCount.textContent = '';
+  const turnBanner = document.getElementById('turn-banner'); if (turnBanner) turnBanner.textContent = 'Waiting…';
+  const pendingBadge = document.getElementById('pending-draw-badge'); if (pendingBadge) pendingBadge.style.display = 'none';
+  const unoBtn = document.getElementById('uno-btn'); if (unoBtn) unoBtn.style.display = 'none';
+  const passBtn = document.getElementById('pass-btn'); if (passBtn) passBtn.style.display = 'none';
+  const chatUnreadBadge = document.getElementById('chat-unread'); if (chatUnreadBadge) chatUnreadBadge.style.display = 'none';
+  chatUnread = 0;
+}
+
 // ── Server message handler ───────────────────────────────────────
 function handleServerMessage(msg) {
   switch (msg.type) {
@@ -140,14 +160,16 @@ function handleServerMessage(msg) {
       isHost = msg.hostId === myPlayerId;
       currentHouseRules = msg.houseRules || {};
       if (currentScreen === 'game-screen') {
+        resetGameUI();
         showScreen('waiting-screen');
-        document.getElementById('end-game-btn').style.display = 'none';
       }
+      document.getElementById('end-game-btn').style.display = 'none';
       renderWaiting(msg.players, msg.hostId, myRoomCode, msg.houseRules, msg.isPublic);
       break;
     }
 
     case 'game_started': {
+      resetGameUI();
       chatMessages = [];
       chatUnread = 0;
       activeChatTab = 'activity';
@@ -177,8 +199,8 @@ function handleServerMessage(msg) {
       // hide those modals (e.g. after a disconnect/reconnect mid-prompt).
       const myColorPending = msg.pendingColorChoice && msg.pendingColorPlayerId === myPlayerId;
       const mySwapPending  = msg.pendingSevenSwap && msg.pendingSevenSwapPlayerId === myPlayerId;
-      if (!myColorPending) hideModal('color-modal');
-      if (!mySwapPending) hideModal('seven-modal');
+      if (myColorPending) showModal('color-modal'); else hideModal('color-modal');
+      if (mySwapPending)  showModal('seven-modal'); else hideModal('seven-modal');
       renderGameState(msg);
       break;
     }
@@ -710,20 +732,46 @@ function renderRoomsList(roomsList) {
 
   container.querySelectorAll('.join-public-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const name = document.getElementById('join-name').value.trim()
-        || document.getElementById('create-name').value.trim();
-      if (!name) {
-        document.getElementById('join-name').focus();
-        return showToast('Enter your name first', true);
-      }
-      document.getElementById('join-code').value = btn.dataset.code;
-      document.getElementById('join-name').value = name;
-      clearSession();
-      myPlayerName = name;
-      myRoomCode   = btn.dataset.code;
-      wsSend({ type: 'join_room', playerName: name, roomCode: btn.dataset.code });
+      const code = btn.dataset.code;
+      const entry = btn.closest('.room-entry');
+      const hostLabel = entry?.querySelector('.room-entry-host')?.textContent || `room ${code}`;
+      openPublicJoinModal(code, hostLabel);
     });
   });
+}
+
+function openPublicJoinModal(code, hostLabel) {
+  const modal     = document.getElementById('public-join-modal');
+  const hostSpan  = document.getElementById('public-join-host');
+  const nameInput = document.getElementById('public-join-name');
+  hostSpan.textContent = hostLabel;
+  const prefill = (document.getElementById('join-name').value.trim()
+    || document.getElementById('create-name').value.trim()
+    || '');
+  nameInput.value = prefill;
+  nameInput.readOnly = document.getElementById('join-name').readOnly === true;
+  modal.dataset.code = code;
+  modal.style.display = 'flex';
+  setTimeout(() => nameInput.focus(), 0);
+}
+
+function closePublicJoinModal() {
+  document.getElementById('public-join-modal').style.display = 'none';
+}
+
+function submitPublicJoin() {
+  const modal = document.getElementById('public-join-modal');
+  const code  = modal.dataset.code;
+  const name  = document.getElementById('public-join-name').value.trim();
+  if (!name) return showToast('Enter your name', true);
+  if (!code)  return closePublicJoinModal();
+  document.getElementById('join-name').value = name;
+  document.getElementById('join-code').value = code;
+  clearSession();
+  myPlayerName = name;
+  myRoomCode   = code;
+  wsSend({ type: 'join_room', playerName: name, roomCode: code });
+  closePublicJoinModal();
 }
 
 // ── Event listeners: Lobby ───────────────────────────────────────
@@ -787,11 +835,25 @@ document.getElementById('start-btn').addEventListener('click', () => {
   wsSend({ type: 'start_game' });
 });
 
-document.getElementById('leave-btn').addEventListener('click', () => {
+function performLeave() {
+  try { wsSend({ type: 'leave_game' }); } catch (_) {}
+  resetGameUI();
   clearSession();
   myPlayerId = myRoomCode = myPlayerName = null;
   isHost = false;
-  location.reload();
+  setTimeout(() => location.reload(), 80);
+}
+
+document.getElementById('leave-btn').addEventListener('click', performLeave);
+
+document.getElementById('game-leave-btn').addEventListener('click', () => showModal('leave-game-modal'));
+document.getElementById('leave-game-yes-btn').addEventListener('click', () => {
+  hideModal('leave-game-modal');
+  performLeave();
+});
+document.getElementById('leave-game-no-btn').addEventListener('click', () => hideModal('leave-game-modal'));
+document.getElementById('leave-game-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) hideModal('leave-game-modal');
 });
 
 document.getElementById('add-bot-btn').addEventListener('click', () => {
@@ -857,6 +919,17 @@ document.getElementById('waiting-rules-btn').addEventListener('click', openRules
 document.getElementById('close-rules-btn').addEventListener('click', () => hideModal('rules-modal'));
 document.getElementById('rules-modal').addEventListener('click', e => {
   if (e.target === e.currentTarget) hideModal('rules-modal');
+});
+
+// ── Public Room Join Modal ───────────────────────────────────────
+document.getElementById('public-join-confirm').addEventListener('click', submitPublicJoin);
+document.getElementById('public-join-cancel').addEventListener('click', closePublicJoinModal);
+document.getElementById('public-join-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitPublicJoin();
+  else if (e.key === 'Escape') closePublicJoinModal();
+});
+document.getElementById('public-join-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closePublicJoinModal();
 });
 
 // ── End Game (host) ──────────────────────────────────────────────

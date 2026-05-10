@@ -3,3 +3,6 @@ nginx/ssl/*.key
 nginx/ssl/*.crt
 npm-data/
 *.log
+.env
+.env.*
+!.env.example

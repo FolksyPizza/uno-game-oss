@@ -1,5 +1,6 @@
 /* ── Reset & Base ─────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+button, input, select, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 
 :root {
   --felt:    #0b4a27;
@@ -181,7 +182,7 @@ body {
   letter-spacing: 8px;
   color: var(--yellow);
   text-shadow: 0 0 20px rgba(241,196,15,0.4);
-  font-family: monospace;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Player list section */
@@ -1179,3 +1180,9 @@ body {
   .auth-buttons { flex-direction: column; }
   .auth-btn { width: 100%; }
 }
+
+/* ── Public Room Join Modal ───────────────────────────────── */
+.public-join-box { max-width: 380px; display: flex; flex-direction: column; gap: 14px; }
+.public-join-box h3 { font-size: 18px; }
+.public-join-sub { color: var(--muted); font-size: 13px; margin-top: -4px; }
+.public-join-box .confirm-actions { margin-top: 4px; }
