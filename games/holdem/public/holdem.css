@@ -1,0 +1,86 @@
+:root {
+  /* Rosemont Games shared chrome tokens — kept in sync with the hub + UNO. */
+  --bg: #0a0a0a; --bg-2: #111111; --surface: #171717; --surface-2: #1e1e1e;
+  --border: rgba(255,255,255,.08); --border-2: rgba(255,255,255,.14);
+  --text: #fafafa; --muted: rgba(255,255,255,.45);
+  --red: #d11f2d; --r: 6px;
+  --felt: #0b3d2e; --green: #4ade80;   /* game-specific */
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; min-height: 100dvh; }
+.muted { color: var(--muted); }
+
+.topbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--border); }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; text-decoration: none; color: var(--text); }
+.brand .mark { width: 26px; height: 34px; background: var(--red); border-radius: 4px; display: grid; place-items: center; font-weight: 900; }
+.topbar .right { display: flex; align-items: center; gap: 12px; }
+
+.btn { font: inherit; font-weight: 600; padding: 9px 15px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--text); color: #0a0a0a; border-color: var(--text); }
+.btn.ghost { background: transparent; }
+.btn.chip { padding: 6px 10px; font-size: 13px; border-radius: 999px; }
+.btn:disabled { opacity: .5; cursor: default; }
+
+.gate { max-width: 420px; margin: 12vh auto; padding: 0 20px; text-align: center; }
+.gate h1 { font-size: 34px; margin-bottom: 6px; }
+.gate-row { display: flex; gap: 8px; margin-top: 14px; }
+.gate input { flex: 1; padding: 11px 13px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; }
+
+.table { max-width: 900px; margin: 0 auto; padding: 20px; }
+.table-info { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 16px; font-size: 15px; }
+
+.board { display: flex; gap: 8px; justify-content: center; padding: 24px; background: var(--felt); border-radius: 14px; border: 1px solid var(--border); }
+.result { text-align: center; margin: 12px 0; padding: 10px; background: var(--surface); border: 1px solid var(--green); border-radius: 8px; color: var(--green); font-weight: 600; }
+
+.card { width: 52px; height: 72px; background: #fff; color: #111; border-radius: 7px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; box-shadow: 0 3px 8px rgba(0,0,0,.4); }
+.card.red { color: var(--red); }
+.card.back { background: repeating-linear-gradient(45deg, #7a1520, #7a1520 6px, #5e0f18 6px, #5e0f18 12px); }
+
+.seats { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 18px 0; }
+.seat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.seat.turn { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+.seat.me { background: var(--surface-2); }
+.seat.folded { opacity: .5; }
+.seat.guest .seat-name { color: var(--muted); }
+.seat-name { font-weight: 700; }
+.seat-chips { font-size: 13px; }
+.seat-bet { font-size: 13px; color: var(--green); min-height: 16px; }
+.seat-status { font-size: 12px; text-transform: capitalize; }
+
+.my-hole { display: flex; gap: 8px; justify-content: center; margin: 16px 0; min-height: 72px; }
+.my-hole .card { width: 64px; height: 88px; font-size: 24px; }
+
+.controls { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; min-height: 44px; }
+.raise-wrap { display: flex; gap: 6px; align-items: center; }
+.raise-wrap input { width: 90px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; }
+
+.chat { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 12px; }
+.chat-log { max-height: 120px; overflow-y: auto; font-size: 14px; display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
+.chat-log b { color: var(--muted); }
+.chat-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.chat-row input { flex: 1; min-width: 160px; padding: 9px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; }
+
+.flash { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--red); color: #fff; padding: 10px 18px; border-radius: 8px; font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,.5); max-width: calc(100vw - 32px); text-align: center; }
+
+/* ── Small screens (phones) ─────────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .topbar { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+  .brand { font-size: 14px; }
+  .brand .mark { width: 22px; height: 29px; font-size: 11px; }
+  .table { padding: 12px; }
+  .table-info { flex-wrap: wrap; gap: 6px 12px; font-size: 14px; }
+  .board { padding: 14px 10px; gap: 5px; }
+  .card { width: 44px; height: 62px; font-size: 17px; border-radius: 6px; }
+  .my-hole .card { width: 56px; height: 78px; font-size: 21px; }
+  .seats { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 7px; }
+  .seat { padding: 8px 10px; }
+  .controls { gap: 7px; }
+  .controls .btn { flex: 1 1 auto; justify-content: center; min-width: 84px; }
+  .raise-wrap { flex: 1 1 100%; justify-content: center; }
+  .raise-wrap input { width: 80px; }
+  .gate { margin: 7vh auto; }
+  .gate h1 { font-size: 28px; }
+  .chat-log { max-height: 100px; }
+}

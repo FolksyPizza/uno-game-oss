@@ -1,21 +1,95 @@
+# Rosemont Games — one Postgres, the hub, and each game as its own service.
+#
+# All app services build from the REPO ROOT context (so they can bundle core/) and
+# bind to 127.0.0.1 only; nginx terminates TLS on uno.rosemont.place and routes:
+#   /        -> hub    (127.0.0.1:5060)   catalog + central auth + social + notify WS
+#   /uno/    -> uno    (127.0.0.1:5050)
+#   /holdem/ -> holdem (127.0.0.1:5070)
+# Same origin ⇒ one shared session cookie ⇒ SSO with zero cookie-domain config, and
+# OAuth stays at uno.rosemont.place (matches the existing Google console redirect).
+
 services:
-  uno:
-    build: .
+  hub:
+    build:
+      context: .
+      dockerfile: hub/Dockerfile
     restart: unless-stopped
-    networks:
-      - proxy
-      - db
+    ports:
+      - "127.0.0.1:5060:5060"
+    networks: [db]
     environment:
-      - PORT=5050
+      - PORT=5060
+      - SERVICE_NAME=hub
       - DATABASE_URL=postgres://uno:uno@db:5432/uno
       - SESSION_SECRET=${SESSION_SECRET:-change-me-in-production}
-      - PUBLIC_URL=${PUBLIC_URL:-http://localhost:5050}
+      - PUBLIC_URL=${PUBLIC_URL:-http://localhost:5060}
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN:-}
+      - JOIN_URL=${JOIN_URL:-}
+      - ADMIN_EMAILS=${ADMIN_EMAILS:-}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:5050"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5060"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      db:
+        condition: service_healthy
+
+  uno:
+    build:
+      context: .
+      dockerfile: games/uno/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5050:5050"
+    networks: [db]
+    environment:
+      - PORT=5050
+      - SERVICE_NAME=uno
+      - DATABASE_URL=postgres://uno:uno@db:5432/uno
+      - SESSION_SECRET=${SESSION_SECRET:-change-me-in-production}
+      - PUBLIC_URL=${PUBLIC_URL:-http://localhost:5050}
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN:-}
+      - JOIN_URL=${JOIN_URL:-}
+      - ADMIN_EMAILS=${ADMIN_EMAILS:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5050"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      db:
+        condition: service_healthy
+
+  holdem:
+    build:
+      context: .
+      dockerfile: games/holdem/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5070:5070"
+    networks: [db]
+    environment:
+      - PORT=5070
+      - SERVICE_NAME=holdem
+      - DATABASE_URL=postgres://uno:uno@db:5432/uno
+      - SESSION_SECRET=${SESSION_SECRET:-change-me-in-production}
+      - PUBLIC_URL=${PUBLIC_URL:-http://localhost:5070}
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN:-}
+      - JOIN_URL=${JOIN_URL:-}
+      - ADMIN_EMAILS=${ADMIN_EMAILS:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5070"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -32,34 +106,14 @@ services:
       - POSTGRES_DB=uno
     volumes:
       - db-data:/var/lib/postgresql/data
-    networks:
-      - db
+    networks: [db]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U uno -d uno"]
       interval: 5s
       timeout: 3s
       retries: 10
 
-  npm:
-    image: jc21/nginx-proxy-manager:latest
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "81:81"
-    volumes:
-      - npm-data:/data
-      - npm-letsencrypt:/etc/letsencrypt
-    networks:
-      - proxy
-    depends_on:
-      - uno
-
 networks:
-  proxy:
   db:
-
 volumes:
-  npm-data:
-  npm-letsencrypt:
   db-data:

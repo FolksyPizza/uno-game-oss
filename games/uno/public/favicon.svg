@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 80">
+  <defs>
+    <filter id="s" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="1" dy="2" stdDeviation="2" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+  <rect x="2" y="2" width="60" height="76" rx="8" fill="#d32f2f" stroke="#111" stroke-width="1.5" filter="url(#s)"/>
+  <rect x="6" y="6" width="52" height="68" rx="5" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+  <ellipse cx="32" cy="40" rx="19" ry="25" fill="#fff"/>
+  <ellipse cx="32" cy="40" rx="19" ry="25" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="0.5"/>
+  <text x="32" y="49" text-anchor="middle" font-family="Arial Black,Impact,sans-serif" font-weight="900" font-size="28" fill="#d32f2f" letter-spacing="-1">UNO</text>
+  <text x="12" y="18" text-anchor="middle" font-family="Arial Black,Impact,sans-serif" font-weight="900" font-size="12" fill="#fff">U</text>
+  <text x="52" y="68" text-anchor="middle" font-family="Arial Black,Impact,sans-serif" font-weight="900" font-size="12" fill="#fff" transform="rotate(180 52 64)">U</text>
+</svg>

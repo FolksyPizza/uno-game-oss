@@ -1,10 +1,16 @@
 {
-  "name": "uno",
+  "name": "rosemont-games",
   "version": "1.0.0",
-  "main": "server.js",
+  "license": "SEE LICENSE IN LICENSE",
+  "private": true,
+  "description": "Rosemont Games — a multi-game hub (UNO and more) on a shared core.",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
+    "hub": "node hub/server.js",
+    "uno": "node games/uno/server.js",
+    "holdem": "node games/holdem/server.js",
+    "dev:hub": "node --watch hub/server.js",
+    "dev:uno": "node --watch games/uno/server.js",
+    "test": "node --test games/uno/tests/*.test.js"
   },
   "dependencies": {
     "cookie-parser": "^1.4.6",

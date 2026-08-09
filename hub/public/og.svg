@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111111"/>
+      <stop offset="1" stop-color="#050505"/>
+    </linearGradient>
+    <filter id="cs" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-opacity="0.55"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- subtle top border accent -->
+  <rect x="0" y="0" width="1200" height="6" fill="#d11f2d"/>
+
+  <!-- fanned deck mark on the right -->
+  <g filter="url(#cs)" transform="translate(880 315)">
+    <rect x="-70" y="-115" width="180" height="250" rx="18" fill="#232323" stroke="#000" stroke-width="2" transform="rotate(-18)"/>
+    <rect x="-55" y="-115" width="180" height="250" rx="18" fill="#3a3a3a" stroke="#000" stroke-width="2" transform="rotate(-6)"/>
+    <rect x="-40" y="-115" width="180" height="250" rx="18" fill="#d11f2d" stroke="#000" stroke-width="2" transform="rotate(8)"/>
+    <g transform="rotate(8)">
+      <text x="50" y="30" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+            font-weight="700" font-size="150" fill="#fafafa">R</text>
+    </g>
+  </g>
+
+  <!-- wordmark -->
+  <text x="90" y="300" font-family="'Segoe UI', Helvetica, Arial, sans-serif"
+        font-weight="800" font-size="96" fill="#fafafa">ROSEMONT</text>
+  <text x="94" y="392" font-family="'Segoe UI', Helvetica, Arial, sans-serif"
+        font-weight="800" font-size="96" fill="#d11f2d">GAMES</text>
+  <text x="98" y="452" font-family="'Segoe UI', Helvetica, Arial, sans-serif"
+        font-weight="400" font-size="30" fill="rgba(255,255,255,0.55)">Cards &amp; classics. One account. Play together.</text>
+</svg>

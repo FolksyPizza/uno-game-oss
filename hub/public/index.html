@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0a">
+  <!-- Apply the saved theme before first paint (no flash). -->
+  <script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('rg_theme')||'midnight');}catch(e){}</script>
+
+  <title>Rosemont Games — cards &amp; classics, together</title>
+  <meta name="description" content="Rosemont Games: play UNO and more with friends. One account across every game — free-text or quick-chat, invites, and DMs. Sign in or jump in as a guest.">
+
+  <!-- Favicons / PWA. Relative paths so the page works under /hub/ and at a root domain. -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico?v=1">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=1">
+  <link rel="manifest" href="site.webmanifest">
+
+  <!-- Open Graph / link previews (iMessage, Slack, Twitter, Discord). Absolute image URL is
+       filled in at runtime by catalog.js so it resolves correctly on whatever host serves us. -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Rosemont Games">
+  <meta property="og:title" content="Rosemont Games">
+  <meta property="og:description" content="Cards & classics. One account. Play together.">
+  <meta property="og:image" content="og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Rosemont Games">
+  <meta name="twitter:description" content="Cards & classics. One account. Play together.">
+  <meta name="twitter:image" content="og.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="catalog.css">
+</head>
+<body>
+
+  <!-- Shared brand splash (plays on every load, here and in every game). -->
+  <script src="splash.js"></script>
+
+  <!-- ── Top bar ─────────────────────────────────────────────── -->
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Rosemont Games home">
+      <span class="mark">R</span>
+      <span>Rosemont&nbsp;Games</span>
+    </a>
+    <div class="topbar-right">
+      <span class="online" title="Players online now">
+        <b id="online-count">—</b> online
+      </span>
+      <!-- Compact identity; full account/settings controls live in the Community area below. -->
+      <div id="topbar-user" class="topbar-user"></div>
+    </div>
+  </header>
+
+  <!-- ── Hero ────────────────────────────────────────────────── -->
+  <section class="hero">
+    <span class="hero-eyebrow">Rosemont Games</span>
+    <h1>Play together.<br>Cards &amp; classics.</h1>
+    <p>One account across every game on Rosemont. Grab friends, spin up a room,
+       and jump in — or play as a guest in seconds.</p>
+    <div class="hero-chips">
+      <span class="hero-chip">One account, every game</span>
+      <span class="hero-chip">Friends &amp; DMs</span>
+      <span class="hero-chip">Play as a guest</span>
+      <span class="hero-chip">Free to play</span>
+    </div>
+  </section>
+
+  <!-- ── Catalog (tiles rendered by catalog.js) ──────────────── -->
+  <main id="catalog" class="catalog" aria-label="Game catalog"></main>
+
+  <!-- ── Community: friends, messages, account (rendered by catalog.js) ── -->
+  <section id="community" class="community" aria-label="Community">
+    <div class="community-head">
+      <h2>Community</h2>
+      <span class="hint">Friends, messages &amp; your account</span>
+    </div>
+    <div id="community-body" class="community-body"></div>
+  </section>
+
+  <!-- ── Rules modal ─────────────────────────────────────────── -->
+  <div id="rules-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="rules-title">
+    <div class="modal-box">
+      <button class="btn btn-ghost btn-sm modal-close" id="rules-close" aria-label="Close">✕</button>
+      <h2 id="rules-title">Rules</h2>
+      <div class="modal-sub" id="rules-sub"></div>
+      <div class="rules-content" id="rules-body"></div>
+    </div>
+  </div>
+
+  <!-- ── Sign-in / guest modal ───────────────────────────────── -->
+  <div id="signin-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="signin-heading">
+    <div class="modal-box" style="max-width:420px">
+      <button class="btn btn-ghost btn-sm modal-close" id="signin-close" aria-label="Close">✕</button>
+      <h2 id="signin-heading">Sign in to Rosemont</h2>
+      <div class="modal-sub">One account works across every game — friends, DMs, and saved progress.</div>
+      <div id="signin-providers" class="signin-providers"></div>
+      <div class="signin-divider"><span>or</span></div>
+      <button id="guest-btn-2" class="btn btn-ghost" style="width:100%">Play as a guest</button>
+      <p class="signin-guest-note">Guests get a temporary <b>Guest ####</b> name, can play and join
+         rooms, and chat with quick phrases. Sign in any time to unlock friends, DMs, and free chat.</p>
+    </div>
+  </div>
+
+  <!-- ── Toasts ──────────────────────────────────────────────── -->
+  <div class="toast-wrap" id="toasts" aria-live="polite"></div>
+
+  <script src="catalog.js"></script>
+  <script src="footer.js" defer></script>
+</body>
+</html>

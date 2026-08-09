@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>Texas Hold'em — Rosemont Games</title>
+
+  <!-- Link previews (crawlers don't run JS, so URLs are absolute). -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Rosemont Games">
+  <meta property="og:title" content="Texas Hold'em — Rosemont Games">
+  <meta property="og:description" content="Play Texas Hold'em with friends on Rosemont Games. Tables, chips, and bluffs — free.">
+  <meta property="og:url" content="https://uno.rosemont.place/holdem/">
+  <meta property="og:image" content="https://uno.rosemont.place/holdem/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Texas Hold'em — Rosemont Games">
+  <meta name="twitter:description" content="Play Texas Hold'em with friends on Rosemont Games. Tables, chips, and bluffs — free.">
+  <meta name="twitter:image" content="https://uno.rosemont.place/holdem/og.png">
+
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="stylesheet" href="holdem.css">
+</head>
+<body>
+  <!-- Shared Rosemont Games loading splash (served by the hub). -->
+  <script src="/splash.js"></script>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="mark">R</span> Hold'em</a>
+    <div class="right">
+      <span id="online" class="muted">—</span>
+      <a class="btn ghost" href="/">Hub</a>
+    </div>
+  </header>
+
+  <!-- Join gate -->
+  <section id="gate" class="gate">
+    <h1>Texas Hold'em</h1>
+    <p class="muted">Join a table to play. Share the code with friends.</p>
+    <div class="gate-row">
+      <input id="name-input" placeholder="Your name" maxlength="20" autocomplete="off">
+    </div>
+    <div class="gate-row">
+      <input id="code-input" placeholder="Table code (optional)" maxlength="5" autocomplete="off" style="text-transform:uppercase">
+      <button id="join-btn" class="btn primary">Join / Create</button>
+    </div>
+  </section>
+
+  <!-- Table -->
+  <main id="table" class="table" style="display:none">
+    <div class="table-info">
+      <span>Table <b id="room-code"></b></span>
+      <span id="phase" class="muted"></span>
+      <span>Pot <b id="pot">0</b></span>
+    </div>
+
+    <div id="board" class="board"></div>
+    <div id="result" class="result" style="display:none"></div>
+
+    <ul id="seats" class="seats"></ul>
+
+    <div id="my-hole" class="my-hole"></div>
+
+    <div id="controls" class="controls"></div>
+
+    <div class="chat">
+      <div id="chat-log" class="chat-log"></div>
+      <div id="chat-row" class="chat-row"></div>
+    </div>
+  </main>
+
+  <script src="holdem.js"></script>
+  <script src="/footer.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+Copyright (c) 2026 William Wagg. All rights reserved.
+
+PROPRIETARY SOFTWARE LICENSE
+
+This software and associated documentation files (the "Software") are the
+proprietary property of William Wagg. Unauthorized copying, modification,
+distribution, sublicensing, or use of this Software, in whole or in part,
+via any medium, is strictly prohibited without prior written permission
+from the copyright holder.
+
+The Software is provided "as is", without warranty of any kind, express or
+implied, including but not limited to the warranties of merchantability,
+fitness for a particular purpose, and noninfringement. In no event shall
+the copyright holder be liable for any claim, damages, or other liability,
+whether in an action of contract, tort, or otherwise, arising from, out of,
+or in connection with the Software or the use or other dealings in the
+Software.
+
+THIRD-PARTY NOTICES
+
+This Software includes the following open-source dependencies, each under
+its own license:
+
+  express        - MIT License - Copyright (c) TJ Holowaychuk & contributors
+  ws             - MIT License - Copyright (c) Einar Otto Stangvik & contributors
+  uuid           - MIT License - Copyright (c) Robert Kieffer & contributors
+  pg             - MIT License - Copyright (c) Brian Carlson & contributors
+  cookie-parser  - MIT License - Copyright (c) TJ Holowaychuk & contributors
+  PostgreSQL     - PostgreSQL License - Copyright (c) The PostgreSQL Global Development Group
+
+Full license texts for these dependencies can be found in their respective
+packages within the node_modules directory.

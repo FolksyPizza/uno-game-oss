@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#0a0a0a"/>
+  <!-- stacked deck (axis-aligned for reliable rasterization): gray card behind, red card in front -->
+  <rect x="12" y="12" width="32" height="40" rx="5" fill="#3a3a3a" stroke="#111" stroke-width="1.5"/>
+  <rect x="19" y="16" width="32" height="40" rx="5" fill="#d11f2d" stroke="#111" stroke-width="1.5"/>
+  <!-- R monogram centered on the front (red) card (center 35,36) -->
+  <text x="35" y="46" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+        font-weight="700" font-size="28" fill="#fafafa">R</text>
+</svg>
