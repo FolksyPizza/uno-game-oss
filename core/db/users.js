@@ -155,15 +155,17 @@ async function destroySession(sid) {
   await db.query('DELETE FROM sessions WHERE sid=$1', [sid]);
 }
 
-async function getStats(userId) {
+async function getStats(userId, gameKey = null) {
+  const gameClause = gameKey ? ' AND game_key=$2' : '';
+  const params = gameKey ? [userId, gameKey] : [userId];
   const wins = await db.query(
-    'SELECT count(*)::int AS n FROM game_results WHERE winner_user_id=$1',
-    [userId]
+    `SELECT count(*)::int AS n FROM game_results WHERE winner_user_id=$1${gameClause}`,
+    params
   );
   const games = await db.query(
     `SELECT count(*)::int AS n FROM game_results
-     WHERE players_json @> jsonb_build_array(jsonb_build_object('userId', $1::text))`,
-    [userId]
+     WHERE players_json @> jsonb_build_array(jsonb_build_object('userId', $1::text))${gameClause}`,
+    params
   );
   return {
     wins: wins.rows[0].n,
