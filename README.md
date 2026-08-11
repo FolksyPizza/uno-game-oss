@@ -1,20 +1,16 @@
-# UNO — Multiplayer Card Game
+# Rosemont Games
 
-Real-time multiplayer UNO card game built with Node.js and WebSockets. Up to 8 players (humans + bots) per room.
+A real-time multiplayer card-game hub built with Node.js and WebSockets. It currently includes UNO, Texas Hold'em, and official two-player Gin Rummy.
 
 ## Features
 
-- Create or join rooms with random 4-letter codes; optional **share link** with `?room=ABCD`
-- **Public rooms** — mark a room as public and it appears in the in-lobby room browser; private by default
-- Full UNO rules: Skip, Reverse, Draw Two, Wild, Wild Draw Four
-- **CPU bots** with adaptive card-scoring strategy and random themed names (Blaze, Nova, Pixel, …)
-- **House rules**: Stack Draw Cards, Draw Until Match, Force Play, Seven-O (7 = swap hands, 0 = rotate all hands)
+- **UNO** — multiplayer rooms, CPU bots, public browsing, official action cards, and optional Stack Draw, Draw Until Match, Force Play, and Seven-O rules
+- **Texas Hold'em** — room-based no-limit tables with blinds, betting streets, showdown evaluation, and side pots
+- **Gin Rummy** — official two-player draw/discard play, exact meld and layoff solving, knock/gin/undercut scoring, full match bonuses, and three fair CPU levels
 - **Optional accounts** via Google or GitHub OAuth — sign in to reserve your display name and track wins/losses; guests still play freely
-- **Chat** in both the waiting room and during the game, with a normalized profanity filter that catches leet-speak, diacritics, dot/space-separated bypasses
-- **Host controls**: start game, add/remove bots, configure house rules, kick players, end game early, toggle room visibility
-- Seamless reconnect — heartbeat detects dead sockets, transient disconnects auto-rejoin without losing your hand
-- **Quality of life**: hand auto-sort toggle, pulsing UNO button, mute toggle, share-link copy, mobile-friendly layout
-- HTTPS via Nginx Proxy Manager
+- Shared friends, direct messages, game invites, chat moderation, public rooms, and live activity counts
+- Reconnect-safe in-memory matches with heartbeat-based connection detection
+- Responsive, accessible browser clients with no frontend build step
 
 ## Quick Start (Docker)
 
@@ -22,7 +18,7 @@ Real-time multiplayer UNO card game built with Node.js and WebSockets. Up to 8 p
 docker compose up -d
 ```
 
-The game runs on **port 5050** internally. A Postgres container is provisioned for accounts/stats/chat history. Nginx Proxy Manager admin is on **port 81** (default login: `admin@example.com` / `changeme`).
+Docker starts Postgres plus the hub on `5060`, UNO on `5050`, Hold'em on `5070`, and Gin Rummy on `5080`. The checked-in Nginx configuration mounts the games at `/uno/`, `/holdem/`, and `/ginrummy/`.
 
 ### Optional: enable OAuth sign-in
 
@@ -43,30 +39,32 @@ Configure callback URLs in your provider consoles:
 
 Restart with `docker compose up -d`. If you skip this, the lobby simply hides the sign-in buttons and everyone plays as a guest.
 
-### Self-Signed TLS (until Let's Encrypt)
+### Production routing
 
 ```bash
-./nginx/setup-npm.sh your.domain.com
+sudo cp nginx/rosemont-platform.conf /etc/nginx/sites-available/rosemont-platform
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-Generates a self-signed certificate and configures NPM to proxy HTTPS → game server. When you have a domain pointed at this server, switch to Let's Encrypt in the NPM admin panel (edit proxy host → SSL → Request a new certificate).
+The Nginx configuration proxies each game subpath, including WebSocket upgrades, and routes `join.rosemont.place/ginrummy/CODE` short links into Gin Rummy rooms. See `nginx/SUBDOMAINS.md` for DNS and certificate setup.
 
 ## Development
 
 ```bash
 npm install
-npm run dev       # node --watch — auto-restarts on file change
-# or
-node server.js
+npm run hub
+npm run uno
+npm run holdem
+npm run ginrummy
 ```
 
 If `DATABASE_URL` is unset the server runs in **degraded mode**: no accounts, no stats, no chat persistence. Game/lobby still work fully. To run the DB locally without docker-compose, point at any reachable Postgres:
 
 ```bash
-DATABASE_URL=postgres://user:pass@localhost/uno node server.js
+DATABASE_URL=postgres://user:pass@localhost/uno npm run ginrummy
 ```
 
-Run tests with `node --test tests/`.
+Run the full suite with `npm test`.
 
 ## Tech Stack
 
@@ -78,35 +76,17 @@ Run tests with `node --test tests/`.
 | Live state | In-memory (`Map` of rooms) |
 | Persistence | Postgres (accounts, sessions, chat history, game results) |
 | Auth | Hand-rolled OAuth2 — Google + GitHub |
-| Proxy | Nginx Proxy Manager (Docker) |
+| Proxy | Nginx |
 
 ## Project Structure
 
 ```
-├── server.js              # HTTP + WebSocket server, message router, bot execution
-├── auth/
-│   └── oauth.js           # Hand-rolled OAuth2 (Google + GitHub) + session cookie
-├── db/
-│   ├── index.js           # pg Pool, migrate(), degraded-mode fallback
-│   ├── users.js           # upsertUser, sessions, getStats
-│   ├── chat.js            # persisted chat for logged-in users
-│   ├── results.js         # game_results writes
-│   └── migrations/        # *.sql, run in order on boot
-├── game/
-│   ├── deck.js            # 108-card deck creation and shuffle
-│   ├── gameState.js       # All UNO game logic (pure-ish functions on room state)
-│   ├── room.js            # Room/player lifecycle, bot management
-│   ├── bot.js             # Bot AI — card scoring, color choice, swap targeting
-│   └── profanity.js       # Normalized profanity filter (leet, diacritics, separators)
-├── public/
-│   ├── index.html         # Lobby, waiting room, game screen
-│   ├── style.css          # Card visuals, layout, modals, mobile
-│   ├── client.js          # WebSocket client, rendering, event handling
-│   └── sounds/            # optional .mp3 effects (see sounds/README.md)
-├── tests/
-│   └── profanity.test.js  # node:test — bypass + false-positive coverage
-├── Dockerfile
-├── docker-compose.yml     # uno + db + nginx-proxy-manager
-└── nginx/
-    └── setup-npm.sh       # One-shot script: TLS cert + NPM proxy host
+├── core/                  # Shared auth, Postgres, social, moderation, notifications
+├── hub/                   # Catalog and central social UI (:5060)
+├── games/
+│   ├── uno/               # UNO service, browser client, engine, and tests (:5050)
+│   ├── holdem/            # Texas Hold'em service and client (:5070)
+│   └── ginrummy/          # Gin service, client, solver, bots, and tests (:5080)
+├── docker-compose.yml     # Hub, all game services, and Postgres
+└── nginx/                 # Production subpath and short-link routing
 ```

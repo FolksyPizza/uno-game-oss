@@ -16,6 +16,7 @@ the nginx block, with no client changes.
 | `ws.rosemont.place`       | Global notification socket (invites/DMs/presence)| hub  `:5060`   |
 | `cdn.rosemont.place`      | Static assets (cacheable origin)                | hub  `:5060`    |
 | `uno.rosemont.place`      | UNO game (already provisioned)                  | uno  `:5050`    |
+| `play.rosemont.place/ginrummy/` | Gin Rummy game                            | ginrummy `:5080` |
 | `<game>.rosemont.place`   | Future games: poker, ginrummy, blackjack, …     | game `:50xx`    |
 
 ## DNS records to set (before provisioning)

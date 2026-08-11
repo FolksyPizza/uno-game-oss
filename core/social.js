@@ -32,7 +32,8 @@ function createSocialRouter({ getOnlineUserIds, notifyUser }) {
     try {
       const user = await users.findById(req.params.userId);
       if (!user) return res.status(404).json({ error: 'not found' });
-      const stats = await users.getStats(user.id);
+      const gameKey = typeof req.query.game === 'string' && req.query.game.trim() ? req.query.game.trim() : null;
+      const stats = await users.getStats(user.id, gameKey);
       res.json({ displayName: user.display_name, ...stats });
     } catch (e) {
       res.status(500).json({ error: e.message });

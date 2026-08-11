@@ -52,12 +52,13 @@ const GAMES = [
     ],
   },
   {
-    id: 'ginrummy', name: 'Gin Rummy', icon: '♦', live: false,
+    id: 'ginrummy', name: 'Gin Rummy', icon: '♦', live: true, url: gameUrl(5080, '/ginrummy/'),
     desc: 'Two-player draw-and-discard. Build runs and sets, then knock to end the hand.',
     rules: [
-      ['Goal', 'Form melds (runs and sets) and minimize deadwood in your hand.'],
-      ['Knocking', 'End the hand when your deadwood is 10 or less; go Gin with zero for a bonus.'],
-      ['Scoring', 'Score the difference in deadwood; first to 100 wins.'],
+      ['Goal', 'Form sets of equal ranks and suited runs of three or more while minimizing unmatched deadwood. Aces are low and worth 1; face cards are worth 10.'],
+      ['Your turn', 'Draw the top stock card or visible discard, then discard one card. A discard you just picked up cannot be put straight back.'],
+      ['Knocking', 'After drawing, end the hand with 10 or less deadwood. The defender may lay off against your melds; going gin with zero deadwood prevents layoffs and adds 20 points.'],
+      ['Scoring', 'A knock scores the deadwood difference. A tie or lower defender total earns a 10-point undercut bonus. First to 100 hand points wins, followed by official game, box, and shutout bonuses.'],
     ],
   },
   {

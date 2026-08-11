@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#102c24">
+  <meta name="description" content="Play official two-player Gin Rummy with friends or a smart CPU opponent on Rosemont Games.">
+  <meta property="og:title" content="Gin Rummy · Rosemont Games">
+  <meta property="og:description" content="Draw, meld, and knock your way to 100 points.">
+  <meta property="og:image" content="og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Gin Rummy · Rosemont Games">
+  <meta name="twitter:description" content="Draw, meld, and knock your way to 100 points.">
+  <meta name="twitter:image" content="og.png">
+  <title>Gin Rummy · Rosemont Games</title>
+  <link rel="stylesheet" href="ginrummy.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Rosemont Games home"><span class="brand-mark">R</span><span>ROSEMONT <b>GIN</b></span></a>
+    <div class="top-actions"><span id="online" class="online">— online</span><button id="rules-btn" class="btn ghost">Rules</button></div>
+  </header>
+
+  <main>
+    <section id="lobby" class="screen lobby-screen">
+      <div class="hero">
+        <p class="eyebrow">The classic two-player card game</p>
+        <h1>Gin<br><i>Rummy</i></h1>
+        <p class="lead">Build clean runs. Read every discard. Knock before your opponent sees it coming.</p>
+        <div class="hero-cards" aria-hidden="true"><span>7<span>♥</span></span><span>8<span>♥</span></span><span>9<span>♥</span></span></div>
+      </div>
+      <div class="lobby-panel panel">
+        <div id="account-note" class="account-note">Play as a guest or sign in through Rosemont Games.</div>
+        <label for="name-input">Display name</label>
+        <input id="name-input" maxlength="20" autocomplete="nickname" placeholder="Your name">
+        <button id="create-btn" class="btn primary wide">Create a room</button>
+        <div class="divider"><span>or join a friend</span></div>
+        <div class="join-row"><input id="code-input" maxlength="5" autocapitalize="characters" placeholder="ROOM CODE"><button id="join-btn" class="btn">Join</button></div>
+        <div class="browse-head"><h2>Open tables</h2><button id="refresh-rooms" class="btn ghost small">Refresh</button></div>
+        <div id="rooms-list" class="rooms-list"><p class="muted">No public rooms yet.</p></div>
+      </div>
+    </section>
+
+    <section id="waiting" class="screen hidden">
+      <div class="waiting-grid">
+        <div class="panel room-panel">
+          <p class="eyebrow">Your room</p>
+          <div class="room-code-row"><strong id="room-code">—</strong><button id="share-btn" class="btn small">Copy invite</button></div>
+          <div id="players" class="players"></div>
+          <p id="waiting-status" class="muted"></p>
+          <div id="host-controls" class="host-controls">
+            <label class="toggle"><input id="public-toggle" type="checkbox"><span>List this room publicly</span></label>
+            <div class="bot-row"><select id="bot-difficulty" aria-label="Bot difficulty"><option value="easy">Easy bot</option><option value="medium" selected>Medium bot</option><option value="hard">Hard bot</option></select><button id="bot-btn" class="btn">Add bot</button></div>
+            <button id="start-btn" class="btn primary wide">Start match</button>
+          </div>
+        </div>
+        <aside class="panel side-panel">
+          <h2>First to 100</h2>
+          <p>Score the deadwood difference, plus 20 for gin or 10 for an undercut. Full match bonuses appear on the final scorecard.</p>
+          <div class="waiting-chat"><h2>Room chat</h2><div id="waiting-chat-log" class="chat-log"></div><div id="waiting-chat-controls" class="chat-controls"></div></div>
+          <button id="friends-btn" class="btn ghost wide">Invite a friend</button>
+          <button id="leave-btn" class="btn ghost wide">Leave room</button>
+        </aside>
+      </div>
+    </section>
+
+    <section id="game" class="screen game-screen hidden">
+      <div id="pause-banner" class="pause-banner hidden">Match paused — waiting for your opponent to reconnect.</div>
+      <div class="score-strip">
+        <div><small>Hand</small><strong id="hand-number">1</strong></div>
+        <div id="score-a" class="score-player"></div>
+        <div class="score-target">to 100</div>
+        <div id="score-b" class="score-player"></div>
+        <button id="end-btn" class="btn ghost small">End match</button>
+      </div>
+
+      <div class="table-felt">
+        <div id="opponent" class="opponent-zone"></div>
+        <div class="center-table">
+          <button id="stock" class="pile stock" aria-label="Draw from stock"><span class="back-mark">R</span><small id="stock-count">31</small></button>
+          <button id="discard" class="pile discard" aria-label="Take top discard"></button>
+          <div id="turn-copy" class="turn-copy"></div>
+        </div>
+        <div class="me-zone">
+          <div id="hand" class="hand" aria-label="Your hand"></div>
+          <div id="actions" class="action-bar"></div>
+        </div>
+      </div>
+
+      <div class="below-table">
+        <section class="panel log-panel"><h2>Table log</h2><div id="game-log" class="game-log"></div></section>
+        <section class="panel chat-panel"><h2>Table chat</h2><div id="chat-log" class="chat-log"></div><div id="chat-controls" class="chat-controls"></div></section>
+      </div>
+    </section>
+  </main>
+
+  <div id="result-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="result-title">
+    <div class="modal-card result-card">
+      <p class="eyebrow">Hand complete</p><h2 id="result-title"></h2><p id="result-summary" class="lead-sm"></p>
+      <div id="revealed-hands" class="revealed-hands"></div><div id="score-breakdown" class="score-breakdown"></div>
+      <button id="next-hand-btn" class="btn primary">Deal next hand</button><button id="close-result-btn" class="btn ghost">Review table</button>
+    </div>
+  </div>
+
+  <div id="rules-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="rules-title">
+    <div class="modal-card rules-card"><button class="modal-x" data-close="rules-modal" aria-label="Close">×</button>
+      <p class="eyebrow">Official rules</p><h2 id="rules-title">How to play Gin Rummy</h2>
+      <h3>Make melds</h3><p>Each player gets 10 cards. Form sets of three or four equal ranks and suited runs of three or more. Aces are low only. Cards outside melds are deadwood: aces count 1, face cards 10, and number cards their value.</p>
+      <h3>Draw, then discard</h3><p>Take the top stock card or visible discard, then discard one card. You cannot take the discard and put that same card back immediately. At the opening, the non-dealer and then dealer may pass on the first face-up card.</p>
+      <h3>Knock or go gin</h3><p>After drawing, knock while discarding if your remaining deadwood is 10 or less. Your opponent may lay off against your melds. With zero deadwood you go gin for a 20-point bonus and no layoffs are allowed.</p>
+      <h3>Score the match</h3><p>A knock scores the deadwood difference. A tie or lower defender total undercuts for 10 plus the difference. First to 100 hand points wins; official game, box, and shutout bonuses complete the scorecard.</p>
+    </div>
+  </div>
+
+  <div id="friends-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="friends-title">
+    <div class="modal-card"><button class="modal-x" data-close="friends-modal" aria-label="Close">×</button><h2 id="friends-title">Invite a friend</h2><div id="friends-list" class="friends-list"><p class="muted">Loading friends…</p></div></div>
+  </div>
+  <div id="toast" class="toast hidden" role="status"></div>
+  <div id="reconnect" class="reconnect hidden">Reconnecting to your room…</div>
+  <script src="ginrummy.js"></script>
+</body>
+</html>

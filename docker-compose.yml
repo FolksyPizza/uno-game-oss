@@ -5,6 +5,7 @@
 #   /        -> hub    (127.0.0.1:5060)   catalog + central auth + social + notify WS
 #   /uno/    -> uno    (127.0.0.1:5050)
 #   /holdem/ -> holdem (127.0.0.1:5070)
+#   /ginrummy/ -> ginrummy (127.0.0.1:5080)
 # Same origin ⇒ one shared session cookie ⇒ SSO with zero cookie-domain config, and
 # OAuth stays at uno.rosemont.place (matches the existing Google console redirect).
 
@@ -90,6 +91,36 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5070"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      db:
+        condition: service_healthy
+
+  ginrummy:
+    build:
+      context: .
+      dockerfile: games/ginrummy/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5080:5080"
+    networks: [db]
+    environment:
+      - PORT=5080
+      - SERVICE_NAME=ginrummy
+      - DATABASE_URL=postgres://uno:uno@db:5432/uno
+      - SESSION_SECRET=${SESSION_SECRET:-change-me-in-production}
+      - PUBLIC_URL=${PUBLIC_URL:-http://localhost:5080}
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN:-}
+      - JOIN_URL=${JOIN_URL:-}
+      - ADMIN_EMAILS=${ADMIN_EMAILS:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5080/api/online"]
       interval: 30s
       timeout: 5s
       retries: 3
