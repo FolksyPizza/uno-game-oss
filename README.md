@@ -1,12 +1,13 @@
 # Rosemont Games
 
-A real-time multiplayer card-game hub built with Node.js and WebSockets. It currently includes UNO, Texas Hold'em, and official two-player Gin Rummy.
+A real-time multiplayer card-game hub built with Node.js and WebSockets. It currently includes UNO, Texas Hold'em, official two-player Gin Rummy, and casino Blackjack (21).
 
 ## Features
 
 - **UNO** — multiplayer rooms, CPU bots, public browsing, official action cards, and optional Stack Draw, Draw Until Match, Force Play, and Seven-O rules
 - **Texas Hold'em** — room-based no-limit tables with blinds, betting streets, showdown evaluation, and side pots
 - **Gin Rummy** — official two-player draw/discard play, exact meld and layoff solving, knock/gin/undercut scoring, full match bonuses, and three fair CPU levels
+- **Blackjack (21)** — multiplayer casino tables, standard 6-deck shoe, hit/stand/double/split/insurance/surrender rules, dealer automation (draw to 16, stand on all 17s), 3:2 natural payouts, basic strategy CPU bots, and an interactive How to Play strategy guide
 - **Optional accounts** via Google or GitHub OAuth — sign in to reserve your display name and track wins/losses; guests still play freely
 - Shared friends, direct messages, game invites, chat moderation, public rooms, and live activity counts
 - Reconnect-safe in-memory matches with heartbeat-based connection detection
@@ -18,7 +19,7 @@ A real-time multiplayer card-game hub built with Node.js and WebSockets. It curr
 docker compose up -d
 ```
 
-Docker starts Postgres plus the hub on `5060`, UNO on `5050`, Hold'em on `5070`, and Gin Rummy on `5080`. The checked-in Nginx configuration mounts the games at `/uno/`, `/holdem/`, and `/ginrummy/`.
+Docker starts Postgres plus the hub on `5060`, UNO on `5050`, Hold'em on `5070`, Gin Rummy on `5080`, and Blackjack on `5090`. The checked-in Nginx configuration mounts the games at `/uno/`, `/holdem/`, `/ginrummy/`, and `/blackjack/`.
 
 ### Optional: enable OAuth sign-in
 
@@ -46,7 +47,7 @@ sudo cp nginx/rosemont-platform.conf /etc/nginx/sites-available/rosemont-platfor
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-The Nginx configuration proxies each game subpath, including WebSocket upgrades, and routes `join.rosemont.place/ginrummy/CODE` short links into Gin Rummy rooms. See `nginx/SUBDOMAINS.md` for DNS and certificate setup.
+The Nginx configuration proxies each game subpath, including WebSocket upgrades, and routes `join.rosemont.place/blackjack/CODE` short links into Blackjack rooms. See `nginx/SUBDOMAINS.md` for DNS and certificate setup.
 
 ## Development
 
@@ -56,12 +57,13 @@ npm run hub
 npm run uno
 npm run holdem
 npm run ginrummy
+npm run blackjack
 ```
 
 If `DATABASE_URL` is unset the server runs in **degraded mode**: no accounts, no stats, no chat persistence. Game/lobby still work fully. To run the DB locally without docker-compose, point at any reachable Postgres:
 
 ```bash
-DATABASE_URL=postgres://user:pass@localhost/uno npm run ginrummy
+DATABASE_URL=postgres://user:pass@localhost/uno npm run blackjack
 ```
 
 Run the full suite with `npm test`.
@@ -86,7 +88,8 @@ Run the full suite with `npm test`.
 ├── games/
 │   ├── uno/               # UNO service, browser client, engine, and tests (:5050)
 │   ├── holdem/            # Texas Hold'em service and client (:5070)
-│   └── ginrummy/          # Gin service, client, solver, bots, and tests (:5080)
+│   ├── ginrummy/          # Gin service, client, solver, bots, and tests (:5080)
+│   └── blackjack/         # Blackjack table service, client, bots, and tests (:5090)
 ├── docker-compose.yml     # Hub, all game services, and Postgres
 └── nginx/                 # Production subpath and short-link routing
 ```

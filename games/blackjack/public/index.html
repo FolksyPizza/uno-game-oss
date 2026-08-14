@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0d281e">
+  <meta name="description" content="Play multiplayer casino Blackjack (21) with friends or smart CPU bot players on Rosemont Games.">
+  <meta property="og:title" content="Blackjack · Rosemont Games">
+  <meta property="og:description" content="Hit, stand, double down, and beat the dealer to 21.">
+  <meta property="og:image" content="og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Blackjack · Rosemont Games">
+  <meta name="twitter:description" content="Hit, stand, double down, and beat the dealer to 21.">
+  <meta name="twitter:image" content="og.png">
+  <title>Blackjack · Rosemont Games</title>
+  <link rel="stylesheet" href="blackjack.css">
+</head>
+<body>
+  <script src="/splash.js"></script>
+
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Rosemont Games home">
+      <span class="brand-mark">R</span>
+      <span>ROSEMONT <b>BLACKJACK</b></span>
+    </a>
+    <div class="top-actions">
+      <span id="online" class="online">— online</span>
+      <button id="rules-btn" class="btn ghost">How to Play</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ── LOBBY SCREEN ─────────────────────────────────────────── -->
+    <section id="lobby" class="screen lobby-screen">
+      <div class="hero">
+        <p class="eyebrow">Casino Classic · 21</p>
+        <h1>Black<br><i>Jack</i></h1>
+        <p class="lead">Beat the dealer to 21 without busting. Hit, stand, double down, or split pairs with friends and smart bot seatmates.</p>
+        <div class="hero-cards" aria-hidden="true">
+          <span class="hero-card">A<span class="suit">♠</span></span>
+          <span class="hero-card red">J<span class="suit">♥</span></span>
+        </div>
+      </div>
+
+      <div class="lobby-panel panel">
+        <div id="account-note" class="account-note">Play as a guest or sign in through Rosemont Games.</div>
+        <label for="name-input">Display name</label>
+        <input id="name-input" maxlength="20" autocomplete="nickname" placeholder="Your name">
+        <button id="create-btn" class="btn primary wide">Open a Table</button>
+        <div class="divider"><span>or join a table</span></div>
+        <div class="join-row">
+          <input id="code-input" maxlength="5" autocapitalize="characters" placeholder="TABLE CODE">
+          <button id="join-btn" class="btn">Join</button>
+        </div>
+        <div class="browse-head">
+          <h2>Open tables</h2>
+          <button id="refresh-rooms" class="btn ghost small">Refresh</button>
+        </div>
+        <div id="rooms-list" class="rooms-list">
+          <p class="muted">No public tables yet.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── TABLE / GAME SCREEN ─────────────────────────────────── -->
+    <section id="game" class="screen game-screen hidden">
+      <div class="table-bar">
+        <div class="bar-left">
+          <span class="chip-label">Table: <b id="display-room-code">—</b></span>
+          <span class="chip-label">Round: <b id="round-number">1</b></span>
+          <span class="chip-label">Shoe: <b id="shoe-count">312</b> cards</span>
+        </div>
+        <div class="bar-center">
+          <span class="dealer-rule-badge">Dealer must draw to 16 and stand on all 17s · Blackjack pays 3:2</span>
+        </div>
+        <div class="bar-right">
+          <button id="invite-btn" class="btn ghost small">Invite</button>
+          <button id="leave-btn" class="btn ghost small">Leave</button>
+        </div>
+      </div>
+
+      <!-- Felt Area -->
+      <div class="felt-container">
+        <div class="table-felt">
+          <!-- Top: Dealer Station -->
+          <div class="dealer-zone">
+            <div class="dealer-tray">
+              <div class="shoe-deck" title="6-Deck Shoe"><span class="shoe-icon">🂠</span></div>
+              <div class="dealer-info">
+                <span class="dealer-title">Dealer</span>
+                <span id="dealer-score" class="score-badge hidden">0</span>
+              </div>
+            </div>
+            <div id="dealer-cards" class="cards-row dealer-cards"></div>
+          </div>
+
+          <!-- Center Announcement Banner -->
+          <div class="felt-center">
+            <div id="banner" class="felt-banner">Place your bets to deal</div>
+            <!-- Insurance Prompt Overlay -->
+            <div id="insurance-box" class="insurance-box hidden">
+              <p>Dealer shows an Ace. Take Insurance? (Costs 50% of bet, pays 2:1 on Dealer Blackjack)</p>
+              <div class="insurance-btns">
+                <button id="insurance-yes" class="btn primary small">Take Insurance</button>
+                <button id="insurance-no" class="btn ghost small">Decline</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom: Multi-Seat Player Stations (Curved Layout) -->
+          <div id="seats-container" class="seats-container"></div>
+        </div>
+      </div>
+
+      <!-- Action Control Deck -->
+      <div class="control-deck">
+        <!-- Betting Controls -->
+        <div id="betting-controls" class="control-bar betting-bar">
+          <div class="chip-selector">
+            <span class="deck-label">Select Chips:</span>
+            <button class="chip chip-5" data-val="5">5</button>
+            <button class="chip chip-25" data-val="25">25</button>
+            <button class="chip chip-50" data-val="50">50</button>
+            <button class="chip chip-100" data-val="100">100</button>
+            <button class="chip chip-500" data-val="500">500</button>
+          </div>
+          <div class="bet-actions">
+            <button id="clear-bet-btn" class="btn ghost small">Clear</button>
+            <button id="topup-btn" class="btn ghost small hidden">Top Up $1,000</button>
+            <button id="deal-btn" class="btn primary">Deal Cards</button>
+          </div>
+        </div>
+
+        <!-- In-Turn Action Controls -->
+        <div id="action-controls" class="control-bar action-bar hidden">
+          <button id="hit-btn" class="btn primary action-btn">
+            <span class="action-title">Hit</span>
+            <span class="action-key">H</span>
+          </button>
+          <button id="stand-btn" class="btn action-btn">
+            <span class="action-title">Stand</span>
+            <span class="action-key">S</span>
+          </button>
+          <button id="double-btn" class="btn action-btn">
+            <span class="action-title">Double Down</span>
+            <span class="action-key">D</span>
+          </button>
+          <button id="split-btn" class="btn action-btn">
+            <span class="action-title">Split</span>
+            <span class="action-key">P</span>
+          </button>
+          <button id="surrender-btn" class="btn ghost action-btn">
+            <span class="action-title">Surrender</span>
+            <span class="action-key">R</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Below Table: Logs, Chat, and Host Settings -->
+      <div class="below-table">
+        <section class="panel log-panel">
+          <div class="panel-head-row">
+            <h2>Table Log</h2>
+            <div id="host-controls" class="host-controls hidden">
+              <button id="add-bot-btn" class="btn ghost small">+ Add Bot</button>
+              <label class="toggle-sm"><input id="public-toggle" type="checkbox"><span>Public</span></label>
+            </div>
+          </div>
+          <div id="table-log" class="game-log"></div>
+        </section>
+
+        <section class="panel chat-panel">
+          <h2>Table Chat</h2>
+          <div id="chat-log" class="chat-log"></div>
+          <div class="chat-controls">
+            <input id="chat-input" maxlength="200" placeholder="Type a message…">
+            <button id="chat-send" class="btn small">Send</button>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <!-- ── HOW TO PLAY & STRATEGY MODAL ────────────────────────── -->
+  <div id="rules-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="rules-title">
+    <div class="modal-card rules-card">
+      <button class="modal-x" data-close="rules-modal" aria-label="Close">×</button>
+      <p class="eyebrow">Official Rules &amp; Strategy</p>
+      <h2 id="rules-title">How to Play Blackjack</h2>
+
+      <div class="rules-tabs">
+        <button class="tab-btn active" data-tab="tab-overview">Overview</button>
+        <button class="tab-btn" data-tab="tab-actions">Actions</button>
+        <button class="tab-btn" data-tab="tab-dealer">Dealer &amp; Payouts</button>
+        <button class="tab-btn" data-tab="tab-strategy">Basic Strategy Cheat Sheet</button>
+      </div>
+
+      <!-- Tab 1: Overview -->
+      <div id="tab-overview" class="tab-content active">
+        <h3>1. The Objective</h3>
+        <p>Your goal is to beat the dealer by having a hand value closer to <b>21</b> than the dealer’s hand, without exceeding 21 (which is a <b>Bust</b>).</p>
+
+        <h3>2. Card Values</h3>
+        <div class="rules-grid">
+          <div class="rule-box">
+            <b>2 through 10</b>
+            <p>Count as their face value.</p>
+          </div>
+          <div class="rule-box">
+            <b>Face Cards (J, Q, K)</b>
+            <p>Count as 10 points each.</p>
+          </div>
+          <div class="rule-box">
+            <b>Aces (A)</b>
+            <p>Count as <b>1</b> or <b>11</b>, whichever gives the best score without busting.</p>
+          </div>
+        </div>
+
+        <h3>3. Hard vs. Soft Hands</h3>
+        <p>A hand with an Ace counted as 11 is a <b>Soft hand</b> (e.g. Ace + 6 = Soft 17). If you hit a soft hand and exceed 21, the Ace automatically switches to 1 (becoming a <b>Hard hand</b>).</p>
+
+        <h3>4. Natural Blackjack</h3>
+        <p>An initial two-card hand containing an Ace and any 10-value card (10, Jack, Queen, or King) is a <b>Natural Blackjack</b> (21). It pays <b>3:2</b> immediately unless the dealer also has Blackjack (resulting in a Push).</p>
+      </div>
+
+      <!-- Tab 2: Actions -->
+      <div id="tab-actions" class="tab-content">
+        <h3>Player Decisions</h3>
+        <div class="action-guide">
+          <div class="guide-row">
+            <span class="guide-tag primary">Hit (H)</span>
+            <div><b>Draw another card.</b> You can hit as many times as you like until you reach 21 or bust (>21).</div>
+          </div>
+          <div class="guide-row">
+            <span class="guide-tag">Stand (S)</span>
+            <div><b>Keep your current hand.</b> Conclude your turn and wait for the dealer to play.</div>
+          </div>
+          <div class="guide-row">
+            <span class="guide-tag">Double Down (D)</span>
+            <div><b>Double your original bet</b> in exchange for receiving <i>exactly one</i> more card, then automatically standing. Available only on your initial 2 cards.</div>
+          </div>
+          <div class="guide-row">
+            <span class="guide-tag">Split (P)</span>
+            <div><b>Split matching pairs</b> (e.g., 8-8 or A-A) into two separate hands by placing an equal second bet. Each hand is played independently. Split Aces receive one card each.</div>
+          </div>
+          <div class="guide-row">
+            <span class="guide-tag ghost">Insurance</span>
+            <div><b>Side bet against dealer Blackjack.</b> When the dealer's visible upcard is an Ace, you may bet up to 50% of your initial wager. Pays <b>2:1</b> if the dealer has Blackjack.</div>
+          </div>
+          <div class="guide-row">
+            <span class="guide-tag ghost">Surrender (R)</span>
+            <div><b>Forfeit half your bet</b> to surrender your two-card hand before taking any actions if you believe your hand is unlikely to win.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Dealer & Payouts -->
+      <div id="tab-dealer" class="tab-content">
+        <h3>Dealer Rules</h3>
+        <p>The dealer has no strategic choices and must follow strict casino rules:</p>
+        <ul>
+          <li>The dealer must <b>draw cards on any total of 16 or less</b>.</li>
+          <li>The dealer must <b>stand on all 17s</b> (both hard 17 and soft 17).</li>
+          <li>If the dealer busts (>21), all remaining non-busted player hands win.</li>
+        </ul>
+
+        <h3>Payout Schedule</h3>
+        <table class="payout-table">
+          <thead>
+            <tr><th>Outcome</th><th>Condition</th><th>Payout</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><b>Natural Blackjack</b></td><td>Ace + 10-value card on initial deal</td><td><b>3 : 2</b> (+150%)</td></tr>
+            <tr><td><b>Standard Win</b></td><td>Player total > Dealer total or Dealer busts</td><td><b>1 : 1</b> (+100%)</td></tr>
+            <tr><td><b>Insurance Win</b></td><td>Dealer reveals Blackjack after showing Ace</td><td><b>2 : 1</b> (+200%)</td></tr>
+            <tr><td><b>Push (Tie)</b></td><td>Player total equals Dealer total</td><td><b>0</b> (Bet refunded)</td></tr>
+            <tr><td><b>Surrender</b></td><td>Player chooses surrender on initial deal</td><td><b>-50%</b> (Half bet returned)</td></tr>
+            <tr><td><b>Loss / Bust</b></td><td>Player busts (>21) or Dealer total > Player total</td><td><b>-100%</b> (Bet lost)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Tab 4: Basic Strategy -->
+      <div id="tab-strategy" class="tab-content">
+        <h3>Basic Strategy Cheat Sheet</h3>
+        <p class="muted">Mathematically optimal plays against the dealer’s upcard (2 through Ace):</p>
+
+        <div class="strategy-section">
+          <h4>Hard Hands</h4>
+          <ul class="strategy-list">
+            <li><b>17 and up:</b> Always <b>Stand</b>.</li>
+            <li><b>13 through 16:</b> <b>Stand</b> against dealer 2–6 (dealer "bust cards"); <b>Hit</b> against dealer 7–A. (Surrender 16 vs 9, 10, A if available).</li>
+            <li><b>12:</b> <b>Stand</b> against dealer 4, 5, 6; otherwise <b>Hit</b>.</li>
+            <li><b>11:</b> Always <b>Double Down</b> (or Hit if doubling not allowed).</li>
+            <li><b>10:</b> <b>Double Down</b> against dealer 2–9; <b>Hit</b> against 10 or Ace.</li>
+            <li><b>9:</b> <b>Double Down</b> against dealer 3–6; otherwise <b>Hit</b>.</li>
+            <li><b>8 or less:</b> Always <b>Hit</b>.</li>
+          </ul>
+        </div>
+
+        <div class="strategy-section">
+          <h4>Soft Hands (with an Ace counted as 11)</h4>
+          <ul class="strategy-list">
+            <li><b>Soft 20 (A,9) or Soft 19 (A,8):</b> Always <b>Stand</b>.</li>
+            <li><b>Soft 18 (A,7):</b> <b>Double</b> vs dealer 3–6; <b>Stand</b> vs 2, 7, 8; <b>Hit</b> vs 9, 10, Ace.</li>
+            <li><b>Soft 17 (A,6) to Soft 13 (A,2):</b> <b>Double</b> vs dealer 4–6 (or 5–6); otherwise <b>Hit</b>. Never stand on Soft 17 or less!</li>
+          </ul>
+        </div>
+
+        <div class="strategy-section">
+          <h4>Pair Splitting</h4>
+          <ul class="strategy-list">
+            <li><b>Aces &amp; 8s:</b> <b>Always Split</b> (A-A and 8-8).</li>
+            <li><b>10s (10, J, Q, K):</b> <b>Never Split</b> (Stand on strong 20).</li>
+            <li><b>9s:</b> <b>Split</b> against dealer 2–9 except 7 (Stand on 18 vs 7, 10, Ace).</li>
+            <li><b>5s:</b> <b>Never Split</b> (Treat as Hard 10: Double vs 2–9).</li>
+            <li><b>2s, 3s, 7s:</b> <b>Split</b> against dealer 2–7; otherwise Hit.</li>
+            <li><b>6s:</b> <b>Split</b> against dealer 2–6; otherwise Hit.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── INVITE MODAL ─────────────────────────────────────────── -->
+  <div id="invite-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="invite-title">
+    <div class="modal-card">
+      <button class="modal-x" data-close="invite-modal" aria-label="Close">×</button>
+      <h2 id="invite-title">Invite to Table</h2>
+      <p class="muted">Share the room code or invite signed-in friends directly:</p>
+      <div class="room-code-row">
+        <strong id="invite-code">—</strong>
+        <button id="copy-link-btn" class="btn small">Copy Link</button>
+      </div>
+      <div id="friends-list" class="friends-list">
+        <p class="muted">Loading friends…</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+  <div id="reconnect" class="reconnect hidden">Reconnecting to table…</div>
+
+  <script src="blackjack.js"></script>
+</body>
+</html>
