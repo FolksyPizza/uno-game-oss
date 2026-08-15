@@ -62,12 +62,14 @@ const GAMES = [
     ],
   },
   {
-    id: 'blackjack', name: 'Blackjack', icon: '♣', live: false,
-    desc: 'Beat the dealer to 21 without busting. Hit, stand, double down, split.',
+    id: 'blackjack', name: 'Blackjack', icon: '♣', live: true, url: gameUrl(5090, '/blackjack/'),
+    desc: 'Casino classic 21. Hit, stand, double down, split pairs, and beat the dealer without busting.',
     rules: [
-      ['Goal', 'Get closer to 21 than the dealer without going over.'],
-      ['Cards', 'Face cards are 10; aces are 1 or 11. "Blackjack" is an ace + ten-value card.'],
-      ['Play', 'Hit for another card or stand; the dealer draws to 17.'],
+      ['Goal', 'Get closer to 21 than the dealer without going over (busting). Natural Blackjack pays 3:2.'],
+      ['Cards', 'Face cards (J, Q, K) are 10; Aces are 1 or 11. Hard hands have no flexible Ace; soft hands contain an Ace counted as 11.'],
+      ['Actions', 'Hit to draw more cards, Stand to keep your total, Double Down to double your bet for one card, or Split matching pairs into two hands.'],
+      ['Dealer rules', 'The dealer must draw cards until reaching at least 17, and must stand on all 17s.'],
+      ['Payouts', 'Natural Blackjack pays 3:2; standard wins pay 1:1; pushes refund your bet; insurance against dealer Ace pays 2:1.'],
     ],
   },
   {

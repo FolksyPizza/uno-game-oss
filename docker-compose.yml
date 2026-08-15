@@ -128,6 +128,36 @@ services:
       db:
         condition: service_healthy
 
+  blackjack:
+    build:
+      context: .
+      dockerfile: games/blackjack/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5090:5090"
+    networks: [db]
+    environment:
+      - PORT=5090
+      - SERVICE_NAME=blackjack
+      - DATABASE_URL=postgres://uno:uno@db:5432/uno
+      - SESSION_SECRET=${SESSION_SECRET:-change-me-in-production}
+      - PUBLIC_URL=${PUBLIC_URL:-http://localhost:5090}
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN:-}
+      - JOIN_URL=${JOIN_URL:-}
+      - ADMIN_EMAILS=${ADMIN_EMAILS:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5090/api/online"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      db:
+        condition: service_healthy
+
   db:
     image: postgres:16-alpine
     restart: unless-stopped
